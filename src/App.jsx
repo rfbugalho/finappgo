@@ -6,9 +6,12 @@ import Dashboard from './pages/Dashboard'
 import Lancamentos from './pages/Lancamentos'
 import Categorias from './pages/Categorias'
 import Contas from './pages/Contas'
+import Cartoes from './pages/Cartoes'
 import Login from './pages/Login'
 
-// Componente para proteger rotas (só acessa se estiver logado)
+// ==========================================
+// COMPONENTE PARA PROTEGER ROTAS
+// ==========================================
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   
@@ -33,6 +36,9 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" />
 }
 
+// ==========================================
+// ROTAS DO SISTEMA
+// ==========================================
 function AppRoutes() {
   const { loading } = useAuth()
 
@@ -56,10 +62,14 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Rota de Login (sem o Layout) */}
+      {/* ROTA DE LOGIN (SEM LAYOUT) */}
       <Route path="/login" element={<Login />} />
       
-      {/* Rotas protegidas (com o Layout) */}
+      {/* ==========================================
+          ROTAS PROTEGIDAS (COM LAYOUT)
+          ========================================== */}
+      
+      {/* DASHBOARD */}
       <Route path="/" element={
         <PrivateRoute>
           <Layout>
@@ -68,6 +78,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      {/* FINANCEIRO */}
       <Route path="/lancamentos" element={
         <PrivateRoute>
           <Layout>
@@ -75,14 +86,7 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
-
-      <Route path="/cartoes" element={
-  <PrivateRoute>
-    <Layout>
-      <Cartoes />
-    </Layout>
-  </PrivateRoute>
-} />      
+      
       <Route path="/categorias" element={
         <PrivateRoute>
           <Layout>
@@ -99,6 +103,14 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      <Route path="/cartoes" element={
+        <PrivateRoute>
+          <Layout>
+            <Cartoes />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
       <Route path="/relatorios" element={
         <PrivateRoute>
           <Layout>
@@ -110,6 +122,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      {/* INVESTIMENTOS */}
       <Route path="/carteira" element={
         <PrivateRoute>
           <Layout>
@@ -132,6 +145,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      {/* ADMINISTRAÇÃO */}
       <Route path="/usuarios" element={
         <PrivateRoute>
           <Layout>
@@ -157,6 +171,9 @@ function AppRoutes() {
   )
 }
 
+// ==========================================
+// APP PRINCIPAL
+// ==========================================
 function App() {
   return (
     <Router>
