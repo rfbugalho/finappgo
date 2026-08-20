@@ -5,10 +5,13 @@ import {
   atualizarLancamento, 
   excluirLancamento 
 } from '../firebase/lancamentosService'
+import { buscarCategorias } from '../firebase/categoriasService'
 
 function Lancamentos() {
   const [lancamentos, setLancamentos] = useState([])
+  const [categorias, setCategorias] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [carregandoCategorias, setCarregandoCategorias] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [modalEdicao, setModalEdicao] = useState(false)
   
@@ -17,13 +20,14 @@ function Lancamentos() {
     data: '',
     descricao: '',
     categoria: '',
+    subcategoria: '',
     tipo: 'despesa',
     valor: ''
   })
 
-  const categorias = ['Renda', 'Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Serviços', 'Outros']
-
-  // Carregar lançamentos do Firebase
+  // ==========================================
+  // CARREGAR DADOS
+  // ==========================================
   const carregarLancamentos = async () => {
     setCarregando(true)
     const dados = await buscarLancamentos()
@@ -31,16 +35,28 @@ function Lancamentos() {
     setCarregando(false)
   }
 
+  const carregarCategorias = async () => {
+    setCarregandoCategorias(true)
+    const dados = await buscarCategorias()
+    setCategorias(dados)
+    setCarregandoCategorias(false)
+  }
+
   useEffect(() => {
     carregarLancamentos()
+    carregarCategorias()
   }, [])
 
+  // ==========================================
+  // FUNÇÕES DO CRUD
+  // ==========================================
   const abrirModalNovo = () => {
     setFormData({
       id: null,
       data: new Date().toISOString().split('T')[0],
       descricao: '',
       categoria: '',
+      subcategoria: '',
       tipo: 'despesa',
       valor: ''
     })
@@ -54,6 +70,7 @@ function Lancamentos() {
       data: lancamento.data,
       descricao: lancamento.descricao,
       categoria: lancamento.categoria,
+      subcategoria: lancamento.subcategoria || '',
       tipo: lancamento.tipo,
       valor: lancamento.valor
     })
@@ -68,6 +85,7 @@ function Lancamentos() {
       data: '',
       descricao: '',
       categoria: '',
+      subcategoria: '',
       tipo: 'despesa',
       valor: ''
     })
@@ -82,10 +100,16 @@ function Lancamentos() {
       return
     }
 
+    if (!formData.categoria) {
+      alert('Por favor, selecione uma categoria.')
+      return
+    }
+
     const dadosParaSalvar = {
       data: formData.data,
       descricao: formData.descricao,
       categoria: formData.categoria,
+      subcategoria: formData.subcategoria || '',
       tipo: formData.tipo,
       valor: valorNumero
     }
@@ -117,6 +141,9 @@ function Lancamentos() {
     }
   }
 
+  // ==========================================
+  // FUNÇÕES AUXILIARES
+  // ==========================================
   const formatarValor = (valor) => {
     return `R$ ${parseFloat(valor).toFixed(2).replace('.', ',')}`
   }
@@ -127,8 +154,19 @@ function Lancamentos() {
     return `${partes[2]}/${partes[1]}/${partes[0]}`
   }
 
+  // Filtrar categorias pelo tipo selecionado
+  const categoriasFiltradas = categorias.filter(cat => cat.tipo === formData.tipo)
+
+  // Buscar subcategorias da categoria selecionada
+  const categoriaSelecionada = categorias.find(cat => cat.nome === formData.categoria)
+  const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
+
+  // ==========================================
+  // RENDER
+  // ==========================================
   return (
     <div>
+      {/* CABEÇALHO */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -140,7 +178,7 @@ function Lancamentos() {
             📋 Lançamentos
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
-            {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) no banco de dados`}
+            {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s)`}
           </p>
         </div>
         <button
@@ -166,6 +204,7 @@ function Lancamentos() {
         </button>
       </div>
 
+      {/* TABELA */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: '20px',
@@ -189,6 +228,7 @@ function Lancamentos() {
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Data</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Descrição</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Categoria</th>
+                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Subcategoria</th>
                 <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Tipo</th>
                 <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Valor</th>
                 <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Ações</th>
@@ -209,6 +249,9 @@ function Lancamentos() {
                     }}>
                       {item.categoria}
                     </span>
+                  </td>
+                  <td style={{ padding: '12px', fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
+                    {item.subcategoria || '-'}
                   </td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>
                     <span style={{
@@ -269,7 +312,9 @@ function Lancamentos() {
         )}
       </div>
 
-      {/* MODAL */}
+      {/* ==========================================
+          MODAL - Formulário de Lançamento
+          ========================================== */}
       {modalAberto && (
         <div style={{
           position: 'fixed',
@@ -306,8 +351,15 @@ function Lancamentos() {
             </p>
 
             <form onSubmit={salvarLancamento}>
+              {/* Data */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '6px'
+                }}>
                   📅 Data
                 </label>
                 <input
@@ -329,8 +381,15 @@ function Lancamentos() {
                 />
               </div>
 
+              {/* Descrição */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '6px'
+                }}>
                   📝 Descrição
                 </label>
                 <input
@@ -353,43 +412,23 @@ function Lancamentos() {
                 />
               </div>
 
+              {/* Tipo (Receita/Despesa) */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
-                  🏷️ Categoria
-                </label>
-                <select
-                  value={formData.categoria}
-                  onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    color: '#ffffff'
-                  }}
-                  required
-                >
-                  <option value="">Selecione uma categoria</option>
-                  {categorias.map(cat => (
-                    <option key={cat} value={cat} style={{ backgroundColor: '#1a2b4a' }}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '6px'
+                }}>
                   📊 Tipo
                 </label>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, tipo: 'receita' })}
+                    onClick={() => {
+                      setFormData({ ...formData, tipo: 'receita', categoria: '', subcategoria: '' })
+                    }}
                     style={{
                       flex: 1,
                       padding: '10px',
@@ -406,7 +445,9 @@ function Lancamentos() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, tipo: 'despesa' })}
+                    onClick={() => {
+                      setFormData({ ...formData, tipo: 'despesa', categoria: '', subcategoria: '' })
+                    }}
                     style={{
                       flex: 1,
                       padding: '10px',
@@ -424,8 +465,106 @@ function Lancamentos() {
                 </div>
               </div>
 
+              {/* Categoria (busca do Firebase) */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '6px'
+                }}>
+                  🏷️ Categoria
+                </label>
+                {carregandoCategorias ? (
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Carregando categorias...</p>
+                ) : (
+                  <select
+                    value={formData.categoria}
+                    onChange={(e) => {
+                      const categoriaNome = e.target.value
+                      setFormData({ 
+                        ...formData, 
+                        categoria: categoriaNome,
+                        subcategoria: '' // Resetar subcategoria ao mudar categoria
+                      })
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categoriasFiltradas.map(cat => (
+                      <option key={cat.id} value={cat.nome} style={{ backgroundColor: '#1a2b4a' }}>
+                        {cat.nome}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {categoriasFiltradas.length === 0 && !carregandoCategorias && (
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginTop: '4px' }}>
+                    Nenhuma categoria cadastrada para {formData.tipo === 'receita' ? 'receitas' : 'despesas'}.
+                    <br />
+                    <a href="/categorias" style={{ color: '#3a7abd' }}>Clique aqui para criar uma categoria</a>
+                  </p>
+                )}
+              </div>
+
+              {/* Subcategoria */}
+              {formData.categoria && subcategoriasDisponiveis.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: 'rgba(255,255,255,0.6)',
+                    marginBottom: '6px'
+                  }}>
+                    🔹 Subcategoria
+                  </label>
+                  <select
+                    value={formData.subcategoria}
+                    onChange={(e) => setFormData({ ...formData, subcategoria: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    <option value="">Selecione uma subcategoria</option>
+                    {subcategoriasDisponiveis.map((sub, idx) => (
+                      <option key={idx} value={sub} style={{ backgroundColor: '#1a2b4a' }}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Valor */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '6px'
+                }}>
                   💰 Valor (R$)
                 </label>
                 <input
@@ -450,6 +589,7 @@ function Lancamentos() {
                 />
               </div>
 
+              {/* Botões */}
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
