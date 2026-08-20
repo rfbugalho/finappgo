@@ -103,12 +103,19 @@ function Cartoes() {
       return
     }
 
+    if (!formCartao.limiteTotal || parseFloat(formCartao.limiteTotal) <= 0) {
+      alert('Digite um limite total válido.')
+      return
+    }
+
     const dadosParaSalvar = {
       nome: formCartao.nome.trim(),
       bandeira: formCartao.bandeira,
-      limiteTotal: parseFloat(formCartao.limiteTotal) || 0,
+      limiteTotal: parseFloat(formCartao.limiteTotal),
+      limiteDisponivel: parseFloat(formCartao.limiteTotal),
       dataFechamento: formCartao.dataFechamento,
-      dataVencimento: formCartao.dataVencimento
+      dataVencimento: formCartao.dataVencimento,
+      status: 'ativo'
     }
 
     try {
@@ -121,7 +128,7 @@ function Cartoes() {
       await carregarCartoes()
       setModalCartaoAberto(false)
     } catch (error) {
-      alert('Erro ao salvar cartão.')
+      alert('Erro ao salvar cartão. Tente novamente.')
       console.error(error)
     }
   }
@@ -183,6 +190,11 @@ function Cartoes() {
       return
     }
 
+    if (!formDespesa.descricao.trim()) {
+      alert('Digite uma descrição para a despesa.')
+      return
+    }
+
     const dadosParaSalvar = {
       cartaoId: formDespesa.cartaoId,
       data: formDespesa.data,
@@ -199,7 +211,6 @@ function Cartoes() {
         await adicionarDespesaCartao(dadosParaSalvar)
       }
       
-      // Recarregar despesas e cartões
       if (formDespesa.cartaoId) {
         const dados = await buscarDespesasCartao(formDespesa.cartaoId)
         setDespesas(dados)
@@ -207,7 +218,7 @@ function Cartoes() {
       await carregarCartoes()
       setModalDespesaAberto(false)
     } catch (error) {
-      alert('Erro ao salvar despesa.')
+      alert('Erro ao salvar despesa. Tente novamente.')
       console.error(error)
     }
   }
