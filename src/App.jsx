@@ -75,7 +75,14 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
-      
+
+      <Route path="/cartoes" element={
+  <PrivateRoute>
+    <Layout>
+      <Cartoes />
+    </Layout>
+  </PrivateRoute>
+} />      
       <Route path="/categorias" element={
         <PrivateRoute>
           <Layout>

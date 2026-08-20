@@ -5,6 +5,7 @@ import GraficoBarras from '../components/GraficoBarras'
 import GraficoPizza from '../components/GraficoPizza'
 import { buscarLancamentos } from '../firebase/lancamentosService'
 import { buscarContas } from '../firebase/contasService'
+import { buscarCartoes } from '../firebase/cartoesService'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -44,6 +45,7 @@ function GraficoPizzaSubcategorias({ dados }) {
 function Dashboard() {
   const [lancamentos, setLancamentos] = useState([])
   const [contas, setContas] = useState([])
+  const [cartoes, setCartoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [totalReceitas, setTotalReceitas] = useState(0)
   const [totalDespesas, setTotalDespesas] = useState(0)
@@ -65,14 +67,19 @@ function Dashboard() {
   proximos7Dias.setDate(proximos7Dias.getDate() + 7)
   const proximos7DiasStr = proximos7Dias.toISOString().split('T')[0]
 
+  // ==========================================
+  // CARREGAR DADOS
+  // ==========================================
   const carregarDados = async () => {
     setCarregando(true)
     
     const dadosLancamentos = await buscarLancamentos()
     const dadosContas = await buscarContas()
+    const dadosCartoes = await buscarCartoes()
     
     setLancamentos(dadosLancamentos)
     setContas(dadosContas)
+    setCartoes(dadosCartoes)
     
     const receitas = dadosLancamentos
       .filter(item => item.tipo === 'receita')
@@ -128,8 +135,29 @@ function Dashboard() {
     carregarDados()
   }, [])
 
+  // ==========================================
+  // FORMATADORES
+  // ==========================================
   const formatarMoeda = (valor) => {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
+  }
+
+  const formatarData = (data) => {
+    if (!data) return '-'
+    const partes = data.split('-')
+    return `${partes[2]}/${partes[1]}/${partes[0]}`
+  }
+
+  const getBandeiraEmoji = (bandeira) => {
+    const bandeiras = {
+      visa: '💳',
+      mastercard: '💳',
+      'american express': '💳',
+      elo: '💳',
+      hipercard: '💳',
+      outro: '💳'
+    }
+    return bandeiras[bandeira?.toLowerCase()] || '💳'
   }
 
   return (
@@ -152,7 +180,7 @@ function Dashboard() {
           color: 'rgba(255,255,255,0.5)', 
           fontSize: 'clamp(12px, 2vw, 14px)'
         }}>
-          {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) ativa(s)`}
+          {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) · ${cartoes.length} cartão(ões)`}
         </p>
       </div>
 
@@ -211,7 +239,9 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* CARDS SUPERIORES (Score Geral, Saldo Total, Contas, Despesas Pendentes) */}
+      {/* ==========================================
+          CARDS SUPERIORES (Score Geral, Saldo Total, Contas, Despesas Pendentes)
+          ========================================== */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -248,7 +278,9 @@ function Dashboard() {
         />
       </div>
 
-      {/* CONTAS E SALDOS */}
+      {/* ==========================================
+          CONTAS E SALDOS
+          ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
         padding: '15px',
@@ -329,7 +361,91 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* DESPESAS PENDENTES */}
+      {/* ==========================================
+          CARTÕES DE CRÉDITO
+          ========================================== */}
+      <div style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ 
+          fontSize: 'clamp(12px, 2vw, 14px)', 
+          color: 'rgba(255,255,255,0.6)',
+          fontWeight: '600',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          💳 Cartões de Crédito
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '10px'
+        }}>
+          {carregando ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Carregando cartões...
+            </p>
+          ) : cartoes.filter(c => c.status === 'ativo').length === 0 ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Nenhum cartão cadastrado
+            </p>
+          ) : (
+            cartoes.filter(c => c.status === 'ativo').map(cartao => (
+              <div key={cartao.id} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  backgroundColor: '#1a2b4a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px'
+                }}>
+                  {getBandeiraEmoji(cartao.bandeira)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ 
+                    color: '#fff', 
+                    fontSize: 'clamp(11px, 1.5vw, 13px)', 
+                    fontWeight: '500',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {cartao.nome}
+                  </p>
+                  <p style={{ 
+                    color: '#2d8a4e',
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    fontWeight: '600',
+                    margin: 0
+                  }}>
+                    {formatarMoeda(cartao.limiteDisponivel || cartao.limiteTotal)}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ==========================================
+          DESPESAS PENDENTES
+          ========================================== */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -418,7 +534,9 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* GRÁFICOS */}
+      {/* ==========================================
+          GRÁFICOS
+          ========================================== */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -486,7 +604,9 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* GRÁFICO DE EVOLUÇÃO */}
+      {/* ==========================================
+          GRÁFICO DE EVOLUÇÃO
+          ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: '15px',

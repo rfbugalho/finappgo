@@ -19,6 +19,7 @@ const MENUS = [
     icone: "💰",
     submenus: [
       { nome: "Lançamentos", rota: "/lancamentos" },
+      { nome: "Cartões", rota: "/cartoes" },
       { nome: "Categorias", rota: "/categorias" },
       { nome: "Contas", rota: "/contas" },
       { nome: "Relatórios", rota: "/relatorios" }
