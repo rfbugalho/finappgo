@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Pie } from 'react-chartjs-2'
 import Card from '../components/Card'
 import GraficoBarras from '../components/GraficoBarras'
 import GraficoPizza from '../components/GraficoPizza'
@@ -9,7 +10,6 @@ import { buscarContas } from '../firebase/contasService'
 // COMPONENTE: Gráfico de Pizza para Subcategorias
 // ==========================================
 function GraficoPizzaSubcategorias({ dados }) {
-  const { Pie } = require('react-chartjs-2')
   const cores = ['#fc8181', '#f6ad55', '#68d391', '#63b3ed', '#b794f4', '#f687b3', '#4fd1c5', '#fbd38d']
 
   const data = {
@@ -90,9 +90,6 @@ function Dashboard() {
     setSaldo(saldoTotal)
     setEconomiaPercentual(economia)
 
-    // ==========================================
-    // DESPESAS PENDENTES (usando despesas já calculadas)
-    // ==========================================
     const despesasFiltradas = dadosLancamentos.filter(item => item.tipo === 'despesa')
     
     const vencidas = despesasFiltradas.filter(item => item.data < hojeStr)
@@ -108,9 +105,6 @@ function Dashboard() {
     )
     setDespesasProximosDias(proximosDias)
 
-    // ==========================================
-    // DADOS PARA GRÁFICOS
-    // ==========================================
     const catMap = {}
     despesasFiltradas.forEach(item => {
       const cat = item.categoria || 'Sem categoria'
