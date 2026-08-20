@@ -4,9 +4,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Lancamentos from './pages/Lancamentos'
+import Categorias from './pages/Categorias'
 import Login from './pages/Login'
 
-// Componente para proteger rotas
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   
@@ -44,10 +44,7 @@ function AppRoutes() {
       <Route path="/categorias" element={
         <PrivateRoute>
           <Layout>
-            <div>
-              <h2 style={{ fontSize: '24px', color: '#ffffff' }}>📂 Categorias</h2>
-              <p style={{ color: 'rgba(255,255,255,0.5)' }}>Gerencie suas categorias de gastos</p>
-            </div>
+            <Categorias />
           </Layout>
         </PrivateRoute>
       } />
