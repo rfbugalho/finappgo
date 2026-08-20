@@ -3,7 +3,7 @@ import {
   buscarCartoes, 
   adicionarCartao, 
   atualizarCartao, 
-  excluirCartao,
+  excluirCartao as excluirCartaoService,
   buscarDespesasCartao,
   adicionarDespesaCartao,
   atualizarDespesaCartao,
@@ -133,10 +133,18 @@ function Cartoes() {
     }
   }
 
+  // ==========================================
+  // FUNÇÃO EXCLUIR CORRIGIDA
+  // ==========================================
   const excluirCartao = async (id, nome) => {
-    if (window.confirm(`Excluir o cartão "${nome}"?`)) {
-      await excluirCartao(id)
-      await carregarCartoes()
+    if (window.confirm(`Excluir o cartão "${nome || 'selecionado'}"?`)) {
+      try {
+        await excluirCartaoService(id)
+        await carregarCartoes()
+      } catch (error) {
+        alert('Erro ao excluir cartão. Tente novamente.')
+        console.error(error)
+      }
     }
   }
 
