@@ -7,6 +7,7 @@ import Lancamentos from './pages/Lancamentos'
 import Categorias from './pages/Categorias'
 import Contas from './pages/Contas'
 import Cartoes from './pages/Cartoes'
+import Metas from './pages/Metas'
 import Login from './pages/Login'
 
 // ==========================================
@@ -102,7 +103,7 @@ function AppRoutes() {
     </Layout>
   </PrivateRoute>
 } />
-      
+
       <Route path="/contas" element={
         <PrivateRoute>
           <Layout>
