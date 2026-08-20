@@ -69,7 +69,9 @@ function Layout({ children }) {
       backgroundColor: '#0d1b2a',
       fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
     }}>
-      {/* SIDEBAR */}
+      {/* ==========================================
+          SIDEBAR - AZUL ESCURO
+          ========================================== */}
       <div style={{
         width: sidebarOpen ? '280px' : '60px',
         backgroundColor: '#0a1628',
@@ -152,6 +154,7 @@ function Layout({ children }) {
           ))}
         </div>
 
+        {/* BOTÃO PARA RECOLHER/EXPANDIR SIDEBAR */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
@@ -176,27 +179,32 @@ function Layout({ children }) {
         </button>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL */}
+      {/* ==========================================
+          CONTEÚDO PRINCIPAL
+          ========================================== */}
       <div style={{ 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column',
         minWidth: 0,
-        backgroundColor: '#0d1b2a'
+        backgroundColor: '#0d1b2a',
+        overflow: 'hidden'
       }}>
-        {/* HEADER */}
+        {/* HEADER SUPERIOR */}
         <header style={{
           backgroundColor: '#1a2b4a',
-          padding: '15px 30px',
+          padding: 'clamp(10px, 2vw, 15px) clamp(15px, 3vw, 30px)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          borderBottom: '1px solid rgba(255,255,255,0.05)'
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          gap: '10px',
+          flexWrap: 'wrap'
         }}>
           <div>
             <h2 style={{ 
-              fontSize: '18px', 
+              fontSize: 'clamp(16px, 2.5vw, 20px)', 
               color: '#ffffff',
               fontWeight: '500',
               margin: 0
@@ -207,10 +215,12 @@ function Layout({ children }) {
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '20px' 
+            gap: 'clamp(10px, 2vw, 20px)',
+            flexWrap: 'wrap'
           }}>
+            {/* Notificações */}
             <span style={{ 
-              fontSize: '20px', 
+              fontSize: 'clamp(16px, 2vw, 20px)', 
               cursor: 'pointer',
               position: 'relative'
             }}>
@@ -221,7 +231,7 @@ function Layout({ children }) {
                 right: '-5px',
                 backgroundColor: '#d94a4a',
                 color: '#fff',
-                fontSize: '10px',
+                fontSize: 'clamp(8px, 1vw, 10px)',
                 borderRadius: '50%',
                 padding: '2px 6px',
                 fontWeight: 'bold'
@@ -230,29 +240,38 @@ function Layout({ children }) {
               </span>
             </span>
             
+            {/* Usuário */}
             <span style={{ 
               color: 'rgba(255,255,255,0.8)',
-              fontSize: '14px',
+              fontSize: 'clamp(11px, 1.5vw, 14px)',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: '20px' }}>👤</span>
-              <span>rafaelbugalho@finappgo.com.br</span>
+              <span style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}>👤</span>
+              <span style={{ display: 'none', '@media (min-width: 768px)': { display: 'inline' } }}>
+                rafaelbugalho@finappgo.com.br
+              </span>
+              <span style={{ display: 'inline', '@media (min-width: 768px)': { display: 'none' } }}>
+                Usuário
+              </span>
             </span>
             
+            {/* Botão Sair */}
             <button
               onClick={handleLogout}
               style={{
                 backgroundColor: 'rgba(255,255,255,0.12)',
                 color: '#fff',
                 border: '1px solid rgba(255,255,255,0.15)',
-                padding: '8px 16px',
+                padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: 'clamp(11px, 1.5vw, 13px)',
                 fontWeight: '500',
-                transition: 'background-color 0.2s, border-color 0.2s'
+                transition: 'background-color 0.2s, border-color 0.2s',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = 'rgba(255,255,255,0.2)'
@@ -268,10 +287,10 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
+        {/* ÁREA DE CONTEÚDO - RESPONSIVA */}
         <main style={{
           flex: 1,
-          padding: '30px',
+          padding: 'clamp(10px, 3vw, 30px)',
           overflowY: 'auto',
           backgroundColor: '#0d1b2a'
         }}>
