@@ -14,10 +14,6 @@ import { db, auth } from './firebase'
 
 const COLLECTION_NAME = 'metas'
 
-// ==========================================
-// METAS
-// ==========================================
-
 export const buscarMetas = async () => {
   try {
     const user = auth.currentUser
@@ -89,10 +85,6 @@ export const excluirMeta = async (id) => {
     throw error
   }
 }
-
-// ==========================================
-// ATUALIZAR PROGRESSO DA META
-// ==========================================
 
 export const atualizarProgressoMeta = async (id, valorAtual) => {
   try {
