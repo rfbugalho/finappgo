@@ -20,6 +20,7 @@ const MENUS = [
     submenus: [
       { nome: "Lançamentos", rota: "/lancamentos" },
       { nome: "Categorias", rota: "/categorias" },
+      { nome: "Contas", rota: "/contas" },
       { nome: "Relatórios", rota: "/relatorios" }
     ]
   },
@@ -46,16 +47,12 @@ function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Função para encontrar o nome da página atual
   const getPageTitle = () => {
     const allSubmenus = MENUS.flatMap(grupo => grupo.submenus)
     const current = allSubmenus.find(sub => sub.rota === location.pathname)
     return current ? current.nome : 'Dashboard'
   }
 
-  // ==========================================
-  // FUNÇÃO PARA SAIR (LOGOUT)
-  // ==========================================
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -72,9 +69,7 @@ function Layout({ children }) {
       backgroundColor: '#0d1b2a',
       fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
     }}>
-      {/* ==========================================
-          SIDEBAR - AZUL ESCURO
-          ========================================== */}
+      {/* SIDEBAR */}
       <div style={{
         width: sidebarOpen ? '280px' : '60px',
         backgroundColor: '#0a1628',
@@ -116,7 +111,6 @@ function Layout({ children }) {
         }}>
           {MENUS.map((grupo, index) => (
             <div key={index} style={{ marginBottom: '5px' }}>
-              {/* Título do grupo */}
               <div style={{
                 padding: '10px 20px',
                 fontSize: '11px',
@@ -129,7 +123,6 @@ function Layout({ children }) {
                 {sidebarOpen ? `${grupo.icone} ${grupo.grupo}` : grupo.icone}
               </div>
               
-              {/* Submenus */}
               {grupo.submenus.map((sub, subIndex) => {
                 const isActive = location.pathname === sub.rota
                 return (
@@ -159,7 +152,6 @@ function Layout({ children }) {
           ))}
         </div>
 
-        {/* BOTÃO PARA RECOLHER/EXPANDIR SIDEBAR */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
@@ -184,9 +176,7 @@ function Layout({ children }) {
         </button>
       </div>
 
-      {/* ==========================================
-          CONTEÚDO PRINCIPAL
-          ========================================== */}
+      {/* CONTEÚDO PRINCIPAL */}
       <div style={{ 
         flex: 1, 
         display: 'flex', 
@@ -194,7 +184,7 @@ function Layout({ children }) {
         minWidth: 0,
         backgroundColor: '#0d1b2a'
       }}>
-        {/* HEADER SUPERIOR */}
+        {/* HEADER */}
         <header style={{
           backgroundColor: '#1a2b4a',
           padding: '15px 30px',
@@ -219,7 +209,6 @@ function Layout({ children }) {
             alignItems: 'center', 
             gap: '20px' 
           }}>
-            {/* Notificações */}
             <span style={{ 
               fontSize: '20px', 
               cursor: 'pointer',
@@ -241,7 +230,6 @@ function Layout({ children }) {
               </span>
             </span>
             
-            {/* Usuário */}
             <span style={{ 
               color: 'rgba(255,255,255,0.8)',
               fontSize: '14px',
@@ -253,9 +241,6 @@ function Layout({ children }) {
               <span>rafaelbugalho@finappgo.com.br</span>
             </span>
             
-            {/* ==========================================
-                BOTÃO SAIR ATUALIZADO
-                ========================================== */}
             <button
               onClick={handleLogout}
               style={{
@@ -283,7 +268,7 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* ÁREA DE CONTEÚDO */}
+        {/* CONTEÚDO */}
         <main style={{
           flex: 1,
           padding: '30px',
