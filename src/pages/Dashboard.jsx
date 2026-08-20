@@ -63,11 +63,24 @@ function Dashboard() {
   const [dadosCategorias, setDadosCategorias] = useState([])
   const [dadosSubcategorias, setDadosSubcategorias] = useState([])
 
+  // ==========================================
+  // INDICADORES AVANÇADOS
+  // ==========================================
+  const [gastosPorMes, setGastosPorMes] = useState([])
+  const [categoriaMaisCara, setCategoriaMaisCara] = useState(null)
+  const [ticketMedio, setTicketMedio] = useState(0)
+  const [previsaoGastos, setPrevisaoGastos] = useState(0)
+  const [top5Despesas, setTop5Despesas] = useState([])
+  const [velocidadeGastos, setVelocidadeGastos] = useState(0)
+  const [receitasPorMes, setReceitasPorMes] = useState([])
+
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
   const proximos7Dias = new Date(hoje)
   proximos7Dias.setDate(proximos7Dias.getDate() + 7)
   const proximos7DiasStr = proximos7Dias.toISOString().split('T')[0]
+  const mesAtual = hoje.getMonth()
+  const anoAtual = hoje.getFullYear()
 
   // ==========================================
   // CARREGAR DADOS
@@ -132,6 +145,75 @@ function Dashboard() {
     })
     setDadosSubcategorias(Object.entries(subMap).map(([nome, valor]) => ({ nome, valor })))
 
+    // ==========================================
+    // CALCULAR INDICADORES AVANÇADOS
+    // ==========================================
+
+    // 1. Gastos por Mês (últimos 6 meses)
+    const mesesLabels = []
+    const gastosMeses = []
+    const receitasMeses = []
+    for (let i = 5; i >= 0; i--) {
+      const data = new Date(anoAtual, mesAtual - i, 1)
+      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+      mesesLabels.push(data.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }))
+      
+      const gastosMes = dadosLancamentos
+        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      gastosMeses.push(gastosMes)
+      
+      const receitasMes = dadosLancamentos
+        .filter(item => item.tipo === 'receita' && item.data.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      receitasMeses.push(receitasMes)
+    }
+    setGastosPorMes(gastosMeses)
+    setReceitasPorMes(receitasMeses)
+
+    // 2. Categoria Mais Cara
+    if (dadosCategorias.length > 0) {
+      const maisCara = dadosCategorias.reduce((max, cat) => 
+        cat.valor > max.valor ? cat : max
+      )
+      setCategoriaMaisCara(maisCara)
+    }
+
+    // 3. Ticket Médio
+    const totalDespesasMes = dadosLancamentos
+      .filter(item => item.tipo === 'despesa')
+      .reduce((acc, item) => acc + item.valor, 0)
+    const qtdDespesas = dadosLancamentos.filter(item => item.tipo === 'despesa').length
+    setTicketMedio(qtdDespesas > 0 ? totalDespesasMes / qtdDespesas : 0)
+
+    // 4. Previsão de Gastos (média dos últimos 3 meses * 1.1)
+    const ultimos3Meses = []
+    for (let i = 1; i <= 3; i++) {
+      const data = new Date(anoAtual, mesAtual - i, 1)
+      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+      const gastos = dadosLancamentos
+        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      ultimos3Meses.push(gastos)
+    }
+    const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.length
+    setPrevisaoGastos(media3Meses * 1.1)
+
+    // 5. Top 5 Despesas do Mês
+    const mesStr = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`
+    const despesasMes = dadosLancamentos
+      .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5)
+    setTop5Despesas(despesasMes)
+
+    // 6. Velocidade de Gastos (média por dia no mês)
+    const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate()
+    const totalGastoMes = dadosLancamentos
+      .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+      .reduce((acc, item) => acc + item.valor, 0)
+    setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
+
     setCarregando(false)
   }
 
@@ -144,6 +226,12 @@ function Dashboard() {
   // ==========================================
   const formatarMoeda = (valor) => {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
+  }
+
+  const formatarData = (data) => {
+    if (!data) return '-'
+    const partes = data.split('-')
+    return `${partes[2]}/${partes[1]}/${partes[0]}`
   }
 
   const getBandeiraEmoji = (bandeira) => {
@@ -282,6 +370,84 @@ function Dashboard() {
           cor={valorTotalVencido > 0 ? '#d94a4a' : '#ed8936'}
           icone="⏰"
         />
+      </div>
+
+      {/* ==========================================
+          INDICADORES AVANÇADOS
+          ========================================== */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '12px',
+        marginBottom: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+            🏷️ Categoria Mais Cara
+          </p>
+          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
+            {carregando ? '...' : categoriaMaisCara?.nome || 'Nenhuma'}
+          </p>
+          <p style={{ color: '#fc8181', fontSize: '13px', margin: '2px 0 0 0' }}>
+            {carregando ? '...' : formatarMoeda(categoriaMaisCara?.valor || 0)}
+          </p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+            🎫 Ticket Médio
+          </p>
+          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
+            {carregando ? '...' : formatarMoeda(ticketMedio)}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
+            por lançamento
+          </p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+            📈 Previsão de Gastos
+          </p>
+          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
+            {carregando ? '...' : formatarMoeda(previsaoGastos)}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
+            próximo mês (estimativa)
+          </p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+            ⚡ Velocidade de Gastos
+          </p>
+          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
+            {carregando ? '...' : formatarMoeda(velocidadeGastos)}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
+            por dia (média)
+          </p>
+        </div>
       </div>
 
       {/* ==========================================
@@ -517,7 +683,6 @@ function Dashboard() {
                       {statusText}
                     </span>
                   </div>
-                  {/* Barra de progresso mini */}
                   <div style={{
                     width: '100%',
                     height: '4px',
@@ -539,6 +704,63 @@ function Dashboard() {
             })
           )}
         </div>
+      </div>
+
+      {/* ==========================================
+          TOP 5 DESPESAS DO MÊS
+          ========================================== */}
+      <div style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ 
+          fontSize: 'clamp(12px, 2vw, 14px)', 
+          color: 'rgba(255,255,255,0.6)',
+          fontWeight: '600',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          🔥 Top 5 Despesas do Mês
+        </h3>
+        {carregando ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
+        ) : top5Despesas.length === 0 ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Nenhuma despesa neste mês</p>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: '8px'
+          }}>
+            {top5Despesas.map((item, index) => (
+              <div key={index} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                borderLeft: `3px solid ${index === 0 ? '#fc8181' : index === 1 ? '#f6ad55' : '#63b3ed'}`
+              }}>
+                <div>
+                  <span style={{ color: '#fff', fontSize: '14px' }}>
+                    {index + 1}. {item.descricao}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginLeft: '10px' }}>
+                    {item.categoria}
+                  </span>
+                </div>
+                <span style={{ color: '#fc8181', fontWeight: '600', fontSize: '14px' }}>
+                  {formatarMoeda(item.valor)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ==========================================
