@@ -7,19 +7,19 @@ import {
   excluirConta 
 } from '../firebase/contasService'
 
-// Lista de bancos com emojis
+// Lista de bancos com emojis e cores
 const BANCOS = [
-  { nome: 'Nubank', emoji: '🟣' },
-  { nome: 'Itaú', emoji: '🟠' },
-  { nome: 'Bradesco', emoji: '🔴' },
-  { nome: 'Santander', emoji: '🔵' },
-  { nome: 'Caixa', emoji: '🟡' },
-  { nome: 'Banco do Brasil', emoji: '🟢' },
-  { nome: 'Inter', emoji: '🟧' },
-  { nome: 'C6 Bank', emoji: '⬛' },
-  { nome: 'PicPay', emoji: '🟩' },
-  { nome: 'Mercado Pago', emoji: '🟦' },
-  { nome: 'Outro', emoji: '🏦' }
+  { nome: 'Nubank', emoji: '🟣', cor: '#8B5CF6' },
+  { nome: 'Itaú', emoji: '🟠', cor: '#EC7000' },
+  { nome: 'Bradesco', emoji: '🔴', cor: '#CC092F' },
+  { nome: 'Santander', emoji: '🔵', cor: '#EC0000' },
+  { nome: 'Inter', emoji: '🟧', cor: '#FF7A00' },
+  { nome: 'Inter Empresa', emoji: '🟧', cor: '#0b6e14ff' },
+  { nome: 'C6 Bank', emoji: '⬛', cor: '#1A1A1A' },
+  { nome: 'PicPay', emoji: '🟩', cor: '#21C25E' },
+  { nome: 'Mercado Pago', emoji: '🟦', cor: '#00AEEF' },
+  { nome: 'XP Investimentos', emoji: '🟢', cor: '#0A7E3F' },
+  { nome: 'Outro', emoji: '🏦', cor: '#6B7280' }
 ]
 
 function Contas() {
@@ -31,8 +31,10 @@ function Contas() {
   const [formData, setFormData] = useState({
     id: null,
     instituicao: '',
+    nomePersonalizado: '',
     tipo: 'corrente',
     logo: '🏦',
+    cor: '#6B7280',
     saldoInicial: '',
     dataAbertura: new Date().toISOString().split('T')[0]
   })
@@ -55,8 +57,10 @@ function Contas() {
     setFormData({
       id: null,
       instituicao: '',
+      nomePersonalizado: '',
       tipo: 'corrente',
       logo: '🏦',
+      cor: '#6B7280',
       saldoInicial: '',
       dataAbertura: new Date().toISOString().split('T')[0]
     })
@@ -67,11 +71,13 @@ function Contas() {
   const abrirModalEditar = (conta) => {
     setFormData({
       id: conta.id,
-      instituicao: conta.instituicao,
-      tipo: conta.tipo,
+      instituicao: conta.instituicao || '',
+      nomePersonalizado: conta.nomePersonalizado || '',
+      tipo: conta.tipo || 'corrente',
       logo: conta.logo || '🏦',
-      saldoInicial: conta.saldoInicial,
-      dataAbertura: conta.dataAbertura
+      cor: conta.cor || '#6B7280',
+      saldoInicial: conta.saldoInicial || '',
+      dataAbertura: conta.dataAbertura || new Date().toISOString().split('T')[0]
     })
     setModalEdicao(true)
     setModalAberto(true)
@@ -81,18 +87,33 @@ function Contas() {
     setModalAberto(false)
   }
 
+  const handleBancoChange = (valor) => {
+    const banco = BANCOS.find(b => b.nome === valor)
+    setFormData({ 
+      ...formData, 
+      instituicao: valor,
+      logo: banco?.emoji || '🏦',
+      cor: banco?.cor || '#6B7280'
+    })
+  }
+
   const salvarConta = async (e) => {
     e.preventDefault()
     
-    if (!formData.instituicao.trim()) {
-      alert('Digite o nome da instituição.')
+    const nomeExibicao = formData.nomePersonalizado?.trim() || formData.instituicao
+
+    if (!nomeExibicao) {
+      alert('Digite o nome da instituição ou um nome personalizado.')
       return
     }
 
     const dadosParaSalvar = {
-      instituicao: formData.instituicao.trim(),
+      instituicao: formData.instituicao,
+      nomePersonalizado: formData.nomePersonalizado?.trim() || '',
+      nomeExibicao: nomeExibicao,
       tipo: formData.tipo,
       logo: formData.logo,
+      cor: formData.cor,
       saldoInicial: parseFloat(formData.saldoInicial) || 0,
       dataAbertura: formData.dataAbertura,
       status: 'ativo'
@@ -136,14 +157,12 @@ function Contas() {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
   }
 
-  // Filtrar contas por mês/ano (exemplo)
   const contasFiltradas = contas.filter(conta => {
     if (!conta.dataAbertura) return true
     const data = new Date(conta.dataAbertura)
     return data.getMonth() + 1 === filtroMes && data.getFullYear() === filtroAno
   })
 
-  // Calcular saldo total
   const saldoTotal = contas.reduce((acc, conta) => acc + (conta.saldoAtual || 0), 0)
 
   return (
@@ -272,10 +291,31 @@ function Contas() {
               transition: 'all 0.3s'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '32px' }}>{conta.logo || '🏦'}</span>
-                <div>
-                  <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '600', margin: 0 }}>
-                    {conta.instituicao}
+                {/* Logo com fundo colorido */}
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  backgroundColor: conta.cor || '#6B7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  flexShrink: 0
+                }}>
+                  {conta.logo || '🏦'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ 
+                    color: '#fff', 
+                    fontSize: '16px', 
+                    fontWeight: '600', 
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {conta.nomeExibicao || conta.instituicao}
                   </h3>
                   <p style={{ 
                     color: 'rgba(255,255,255,0.3)', 
@@ -284,6 +324,11 @@ function Contas() {
                     margin: 0
                   }}>
                     {conta.tipo || 'Conta Corrente'}
+                    {conta.instituicao && conta.instituicao !== (conta.nomeExibicao || conta.instituicao) && (
+                      <span style={{ color: 'rgba(255,255,255,0.2)', marginLeft: '6px' }}>
+                        ({conta.instituicao})
+                      </span>
+                    )}
                   </p>
                 </div>
                 {conta.status === 'inativo' && (
@@ -294,7 +339,7 @@ function Contas() {
                     borderRadius: '12px',
                     fontSize: '10px',
                     fontWeight: '600',
-                    marginLeft: 'auto'
+                    flexShrink: 0
                   }}>
                     INATIVA
                   </span>
@@ -362,7 +407,7 @@ function Contas() {
                   {conta.status === 'ativo' ? '🔒 Inativar' : '🔓 Ativar'}
                 </button>
                 <button
-                  onClick={() => handleExcluir(conta.id, conta.instituicao)}
+                  onClick={() => handleExcluir(conta.id, conta.nomeExibicao || conta.instituicao)}
                   style={{
                     backgroundColor: 'rgba(217,74,74,0.2)',
                     color: '#d94a4a',
@@ -381,7 +426,9 @@ function Contas() {
         )}
       </div>
 
-      {/* MODAL */}
+      {/* ==========================================
+          MODAL - NOVA/EDITAR CONTA
+          ========================================== */}
       {modalAberto && (
         <div style={{
           position: 'fixed',
@@ -414,21 +461,14 @@ function Contas() {
             </p>
 
             <form onSubmit={salvarConta}>
-              {/* Instituição */}
+              {/* Instituição (seleção) */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   🏦 Instituição
                 </label>
                 <select
                   value={formData.instituicao}
-                  onChange={(e) => {
-                    const banco = BANCOS.find(b => b.nome === e.target.value)
-                    setFormData({ 
-                      ...formData, 
-                      instituicao: e.target.value,
-                      logo: banco?.emoji || '🏦'
-                    })
-                  }}
+                  onChange={(e) => handleBancoChange(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -449,17 +489,62 @@ function Contas() {
                 </select>
               </div>
 
+              {/* Nome Personalizado */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  ✏️ Nome Personalizado (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Conta do Nubank, Poupança do Itaú..."
+                  value={formData.nomePersonalizado}
+                  onChange={(e) => setFormData({ ...formData, nomePersonalizado: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                />
+                <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '4px' }}>
+                  Deixe em branco para usar o nome da instituição
+                </p>
+              </div>
+
               {/* Logo (visualização) */}
               {formData.logo && (
                 <div style={{ 
-                  textAlign: 'center', 
-                  fontSize: '48px', 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
                   marginBottom: '16px',
-                  padding: '10px',
+                  padding: '12px',
                   backgroundColor: 'rgba(255,255,255,0.03)',
                   borderRadius: '8px'
                 }}>
-                  {formData.logo}
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '12px',
+                    backgroundColor: formData.cor || '#6B7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px'
+                  }}>
+                    {formData.logo}
+                  </div>
+                  <div>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', margin: 0 }}>
+                      Pré-visualização do logo
+                    </p>
+                    <p style={{ color: '#fff', fontSize: '14px', margin: 0 }}>
+                      {formData.nomePersonalizado || formData.instituicao || 'Nome da conta'}
+                    </p>
+                  </div>
                 </div>
               )}
 
