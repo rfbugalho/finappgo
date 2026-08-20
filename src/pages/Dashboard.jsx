@@ -6,6 +6,7 @@ import GraficoPizza from '../components/GraficoPizza'
 import { buscarLancamentos } from '../firebase/lancamentosService'
 import { buscarContas } from '../firebase/contasService'
 import { buscarCartoes } from '../firebase/cartoesService'
+import { buscarMetas } from '../firebase/metasService'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -46,6 +47,7 @@ function Dashboard() {
   const [lancamentos, setLancamentos] = useState([])
   const [contas, setContas] = useState([])
   const [cartoes, setCartoes] = useState([])
+  const [metas, setMetas] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [totalReceitas, setTotalReceitas] = useState(0)
   const [totalDespesas, setTotalDespesas] = useState(0)
@@ -76,10 +78,12 @@ function Dashboard() {
     const dadosLancamentos = await buscarLancamentos()
     const dadosContas = await buscarContas()
     const dadosCartoes = await buscarCartoes()
+    const dadosMetas = await buscarMetas()
     
     setLancamentos(dadosLancamentos)
     setContas(dadosContas)
     setCartoes(dadosCartoes)
+    setMetas(dadosMetas)
     
     const receitas = dadosLancamentos
       .filter(item => item.tipo === 'receita')
@@ -142,12 +146,6 @@ function Dashboard() {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
   }
 
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
   const getBandeiraEmoji = (bandeira) => {
     const bandeiras = {
       visa: '💳',
@@ -158,6 +156,14 @@ function Dashboard() {
       outro: '💳'
     }
     return bandeiras[bandeira?.toLowerCase()] || '💳'
+  }
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'concluida': return '✅ Concluída'
+      case 'atrasada': return '⚠️ Atrasada'
+      default: return '🔄 Em andamento'
+    }
   }
 
   return (
@@ -180,7 +186,7 @@ function Dashboard() {
           color: 'rgba(255,255,255,0.5)', 
           fontSize: 'clamp(12px, 2vw, 14px)'
         }}>
-          {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) · ${cartoes.length} cartão(ões)`}
+          {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) · ${cartoes.length} cartão(ões) · ${metas.length} meta(s)`}
         </p>
       </div>
 
@@ -439,6 +445,98 @@ function Dashboard() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      </div>
+
+      {/* ==========================================
+          METAS FINANCEIRAS
+          ========================================== */}
+      <div style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ 
+          fontSize: 'clamp(12px, 2vw, 14px)', 
+          color: 'rgba(255,255,255,0.6)',
+          fontWeight: '600',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          🎯 Metas Financeiras
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '10px'
+        }}>
+          {carregando ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Carregando metas...
+            </p>
+          ) : metas.length === 0 ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Nenhuma meta cadastrada
+            </p>
+          ) : (
+            metas.slice(0, 4).map(meta => {
+              const progresso = meta.progresso || 0
+              const statusText = getStatusText(meta.status)
+              
+              return (
+                <div key={meta.id} style={{
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid ${meta.cor || '#4299e1'}`
+                }}>
+                  <p style={{ 
+                    color: '#fff', 
+                    fontSize: 'clamp(11px, 1.5vw, 13px)', 
+                    fontWeight: '500',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {meta.nome}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
+                      {progresso.toFixed(0)}%
+                    </span>
+                    <span style={{ 
+                      color: meta.status === 'concluida' ? '#48bb78' : meta.status === 'atrasada' ? '#fc8181' : '#4299e1',
+                      fontSize: '9px',
+                      fontWeight: '500'
+                    }}>
+                      {statusText}
+                    </span>
+                  </div>
+                  {/* Barra de progresso mini */}
+                  <div style={{
+                    width: '100%',
+                    height: '4px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: '2px',
+                    marginTop: '6px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${Math.min(progresso, 100)}%`,
+                      height: '100%',
+                      backgroundColor: meta.cor || '#4299e1',
+                      borderRadius: '2px',
+                      transition: 'width 0.5s ease'
+                    }} />
+                  </div>
+                </div>
+              )
+            })
           )}
         </div>
       </div>

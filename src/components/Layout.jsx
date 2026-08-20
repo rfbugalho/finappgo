@@ -34,6 +34,13 @@ const MENUS = [
     ]
   },
   {
+  grupo: "OBJETIVOS",
+  icone: "🎯",
+  submenus: [
+    { nome: "Metas", rota: "/metas" }
+  ]
+},
+  {
     grupo: "ADMINISTRAÇÃO",
     icone: "⚙️",
     submenus: [

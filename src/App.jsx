@@ -94,6 +94,14 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
+
+      <Route path="/metas" element={
+  <PrivateRoute>
+    <Layout>
+      <Metas />
+    </Layout>
+  </PrivateRoute>
+} />
       
       <Route path="/contas" element={
         <PrivateRoute>
