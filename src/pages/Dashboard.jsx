@@ -5,6 +5,42 @@ import GraficoPizza from '../components/GraficoPizza'
 import { buscarLancamentos } from '../firebase/lancamentosService'
 import { buscarContas } from '../firebase/contasService'
 
+// ==========================================
+// COMPONENTE: Gráfico de Pizza para Subcategorias
+// ==========================================
+function GraficoPizzaSubcategorias({ dados }) {
+  const { Pie } = require('react-chartjs-2')
+  const cores = ['#fc8181', '#f6ad55', '#68d391', '#63b3ed', '#b794f4', '#f687b3', '#4fd1c5', '#fbd38d']
+
+  const data = {
+    labels: dados.map(item => item.nome),
+    datasets: [
+      {
+        data: dados.map(item => item.valor),
+        backgroundColor: cores.slice(0, dados.length),
+        borderWidth: 2,
+        borderColor: '#0d1b2a'
+      }
+    ]
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          color: 'rgba(255,255,255,0.6)',
+          font: { size: 11 }
+        }
+      }
+    }
+  }
+
+  return <Pie data={data} options={options} />
+}
+
 function Dashboard() {
   const [lancamentos, setLancamentos] = useState([])
   const [contas, setContas] = useState([])
@@ -14,44 +50,30 @@ function Dashboard() {
   const [saldo, setSaldo] = useState(0)
   const [economiaPercentual, setEconomiaPercentual] = useState(0)
 
-  // ==========================================
-  // DADOS DE DESPESAS PENDENTES
-  // ==========================================
   const [despesasVencidas, setDespesasVencidas] = useState([])
   const [despesasHoje, setDespesasHoje] = useState([])
   const [despesasProximosDias, setDespesasProximosDias] = useState([])
   const [valorTotalVencido, setValorTotalVencido] = useState(0)
   const [valorTotalHoje, setValorTotalHoje] = useState(0)
 
-  // ==========================================
-  // DADOS PARA GRÁFICOS
-  // ==========================================
   const [dadosCategorias, setDadosCategorias] = useState([])
   const [dadosSubcategorias, setDadosSubcategorias] = useState([])
 
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
-  const amanha = new Date(hoje)
-  amanha.setDate(amanha.getDate() + 1)
-  const amanhaStr = amanha.toISOString().split('T')[0]
   const proximos7Dias = new Date(hoje)
   proximos7Dias.setDate(proximos7Dias.getDate() + 7)
   const proximos7DiasStr = proximos7Dias.toISOString().split('T')[0]
 
-  // ==========================================
-  // CARREGAR DADOS
-  // ==========================================
   const carregarDados = async () => {
     setCarregando(true)
     
-    // Buscar lançamentos e contas
     const dadosLancamentos = await buscarLancamentos()
     const dadosContas = await buscarContas()
     
     setLancamentos(dadosLancamentos)
     setContas(dadosContas)
     
-    // Calcular totais
     const receitas = dadosLancamentos
       .filter(item => item.tipo === 'receita')
       .reduce((acc, item) => acc + item.valor, 0)
@@ -69,41 +91,36 @@ function Dashboard() {
     setEconomiaPercentual(economia)
 
     // ==========================================
-    // PROCESSAR DESPESAS PENDENTES
+    // DESPESAS PENDENTES (usando despesas já calculadas)
     // ==========================================
-    const despesas = dadosLancamentos.filter(item => item.tipo === 'despesa')
+    const despesasFiltradas = dadosLancamentos.filter(item => item.tipo === 'despesa')
     
-    // Despesas vencidas (data < hoje)
-    const vencidas = despesas.filter(item => item.data < hojeStr)
+    const vencidas = despesasFiltradas.filter(item => item.data < hojeStr)
     setDespesasVencidas(vencidas)
     setValorTotalVencido(vencidas.reduce((acc, item) => acc + item.valor, 0))
     
-    // Despesas de hoje
-    const hojeDespesas = despesas.filter(item => item.data === hojeStr)
+    const hojeDespesas = despesasFiltradas.filter(item => item.data === hojeStr)
     setDespesasHoje(hojeDespesas)
     setValorTotalHoje(hojeDespesas.reduce((acc, item) => acc + item.valor, 0))
     
-    // Despesas dos próximos 7 dias (excluindo hoje)
-    const proximosDias = despesas.filter(item => 
+    const proximosDias = despesasFiltradas.filter(item => 
       item.data > hojeStr && item.data <= proximos7DiasStr
     )
     setDespesasProximosDias(proximosDias)
 
     // ==========================================
-    // PROCESSAR DADOS PARA GRÁFICOS
+    // DADOS PARA GRÁFICOS
     // ==========================================
-    // Agrupar despesas por categoria
     const catMap = {}
-    despesas.forEach(item => {
+    despesasFiltradas.forEach(item => {
       const cat = item.categoria || 'Sem categoria'
       if (!catMap[cat]) catMap[cat] = 0
       catMap[cat] += item.valor
     })
     setDadosCategorias(Object.entries(catMap).map(([nome, valor]) => ({ nome, valor })))
 
-    // Agrupar despesas por subcategoria
     const subMap = {}
-    despesas.forEach(item => {
+    despesasFiltradas.forEach(item => {
       const sub = item.subcategoria || 'Sem subcategoria'
       if (!subMap[sub]) subMap[sub] = 0
       subMap[sub] += item.valor
@@ -117,38 +134,17 @@ function Dashboard() {
     carregarDados()
   }, [])
 
-  // ==========================================
-  // FORMATADORES
-  // ==========================================
   const formatarMoeda = (valor) => {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
   }
 
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
-  // ==========================================
-  // RENDER
-  // ==========================================
   return (
     <div>
-      {/* TÍTULO */}
       <div style={{ marginBottom: '30px' }}>
-        <h2 style={{ 
-          fontSize: '24px', 
-          color: '#ffffff',
-          fontWeight: '600',
-          marginBottom: '4px'
-        }}>
+        <h2 style={{ fontSize: '24px', color: '#ffffff', fontWeight: '600', marginBottom: '4px' }}>
           📊 Visão Geral
         </h2>
-        <p style={{ 
-          color: 'rgba(255,255,255,0.5)', 
-          fontSize: '14px'
-        }}>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
           {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) ativa(s)`}
         </p>
       </div>
@@ -190,9 +186,7 @@ function Dashboard() {
         />
       </div>
 
-      {/* ==========================================
-          SEÇÃO: CONTAS E SALDOS
-          ========================================== */}
+      {/* CONTAS E SALDOS */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
         padding: '20px',
@@ -200,14 +194,7 @@ function Dashboard() {
         border: '1px solid rgba(255,255,255,0.05)',
         marginBottom: '20px'
       }}>
-        <h3 style={{ 
-          fontSize: '14px', 
-          color: 'rgba(255,255,255,0.6)',
-          fontWeight: '600',
-          marginBottom: '15px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+        <h3 style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginBottom: '15px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           💰 Contas e Saldos
         </h3>
         <div style={{
@@ -246,23 +233,10 @@ function Dashboard() {
                   {conta.logo || '🏦'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ 
-                    color: '#fff', 
-                    fontSize: '13px', 
-                    fontWeight: '500',
-                    margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
+                  <p style={{ color: '#fff', fontSize: '13px', fontWeight: '500', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {conta.nomeExibicao || conta.instituicao}
                   </p>
-                  <p style={{ 
-                    color: (conta.saldoAtual || 0) >= 0 ? '#2d8a4e' : '#d94a4a',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    margin: 0
-                  }}>
+                  <p style={{ color: (conta.saldoAtual || 0) >= 0 ? '#2d8a4e' : '#d94a4a', fontSize: '14px', fontWeight: '600', margin: 0 }}>
                     {formatarMoeda(conta.saldoAtual || 0)}
                   </p>
                 </div>
@@ -272,31 +246,24 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ==========================================
-          SEÇÃO: DESPESAS PENDENTES
-          ========================================== */}
+      {/* DESPESAS PENDENTES */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
         gap: '20px',
         marginBottom: '20px'
       }}>
-        {/* Vencidas */}
         <div style={{
           backgroundColor: 'rgba(217,74,74,0.1)',
           padding: '15px',
           borderRadius: '10px',
           border: '1px solid rgba(217,74,74,0.2)'
         }}>
-          <h4 style={{ color: '#d94a4a', fontSize: '13px', margin: '0 0 8px 0' }}>
-            🔴 Vencidas
-          </h4>
+          <h4 style={{ color: '#d94a4a', fontSize: '13px', margin: '0 0 8px 0' }}>🔴 Vencidas</h4>
           {carregando ? (
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>Carregando...</p>
           ) : despesasVencidas.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-              Nenhuma despesa vencida ✅
-            </p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Nenhuma despesa vencida ✅</p>
           ) : (
             <div>
               <p style={{ color: '#d94a4a', fontSize: '18px', fontWeight: '700', margin: '0' }}>
@@ -309,22 +276,17 @@ function Dashboard() {
           )}
         </div>
 
-        {/* Hoje */}
         <div style={{
           backgroundColor: 'rgba(237,137,54,0.1)',
           padding: '15px',
           borderRadius: '10px',
           border: '1px solid rgba(237,137,54,0.2)'
         }}>
-          <h4 style={{ color: '#ed8936', fontSize: '13px', margin: '0 0 8px 0' }}>
-            🟡 Vencem Hoje
-          </h4>
+          <h4 style={{ color: '#ed8936', fontSize: '13px', margin: '0 0 8px 0' }}>🟡 Vencem Hoje</h4>
           {carregando ? (
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>Carregando...</p>
           ) : despesasHoje.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-              Nenhuma despesa hoje ✅
-            </p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Nenhuma despesa hoje ✅</p>
           ) : (
             <div>
               <p style={{ color: '#ed8936', fontSize: '18px', fontWeight: '700', margin: '0' }}>
@@ -337,22 +299,17 @@ function Dashboard() {
           )}
         </div>
 
-        {/* Próximos Dias */}
         <div style={{
           backgroundColor: 'rgba(58,122,189,0.1)',
           padding: '15px',
           borderRadius: '10px',
           border: '1px solid rgba(58,122,189,0.2)'
         }}>
-          <h4 style={{ color: '#3a7abd', fontSize: '13px', margin: '0 0 8px 0' }}>
-            🔵 Próximos 7 Dias
-          </h4>
+          <h4 style={{ color: '#3a7abd', fontSize: '13px', margin: '0 0 8px 0' }}>🔵 Próximos 7 Dias</h4>
           {carregando ? (
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>Carregando...</p>
           ) : despesasProximosDias.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-              Nenhuma despesa nos próximos dias ✅
-            </p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Nenhuma despesa nos próximos dias ✅</p>
           ) : (
             <div>
               <p style={{ color: '#3a7abd', fontSize: '18px', fontWeight: '700', margin: '0' }}>
@@ -366,16 +323,13 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ==========================================
-          GRÁFICOS
-          ========================================== */}
+      {/* GRÁFICOS */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '20px',
         marginBottom: '20px'
       }}>
-        {/* Gráfico de Categorias */}
         <div style={{
           backgroundColor: 'rgba(255,255,255,0.05)',
           padding: '20px',
@@ -383,14 +337,7 @@ function Dashboard() {
           border: '1px solid rgba(255,255,255,0.08)',
           height: '280px'
         }}>
-          <h3 style={{ 
-            fontSize: '13px', 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: '600',
-            marginBottom: '10px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
+          <h3 style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             📊 Gastos por Categoria
           </h3>
           {carregando ? (
@@ -399,16 +346,13 @@ function Dashboard() {
             </div>
           ) : dadosCategorias.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>
-                Nenhum dado de categoria disponível
-              </p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nenhum dado de categoria disponível</p>
             </div>
           ) : (
             <GraficoPizza lancamentos={lancamentos} />
           )}
         </div>
 
-        {/* Gráfico de Subcategorias */}
         <div style={{
           backgroundColor: 'rgba(255,255,255,0.05)',
           padding: '20px',
@@ -416,14 +360,7 @@ function Dashboard() {
           border: '1px solid rgba(255,255,255,0.08)',
           height: '280px'
         }}>
-          <h3 style={{ 
-            fontSize: '13px', 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: '600',
-            marginBottom: '10px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
+          <h3 style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             📊 Gastos por Subcategoria
           </h3>
           {carregando ? (
@@ -432,9 +369,7 @@ function Dashboard() {
             </div>
           ) : dadosSubcategorias.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>
-                Nenhum dado de subcategoria disponível
-              </p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nenhum dado de subcategoria disponível</p>
             </div>
           ) : (
             <GraficoPizzaSubcategorias dados={dadosSubcategorias} />
@@ -442,7 +377,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Gráfico de Evolução */}
+      {/* GRÁFICO DE EVOLUÇÃO */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: '20px',
@@ -451,14 +386,7 @@ function Dashboard() {
         height: '280px',
         marginBottom: '20px'
       }}>
-        <h3 style={{ 
-          fontSize: '13px', 
-          color: 'rgba(255,255,255,0.6)',
-          fontWeight: '600',
-          marginBottom: '10px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+        <h3 style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           📈 Evolução dos Scores (Receitas x Despesas)
         </h3>
         {carregando ? (
@@ -467,9 +395,7 @@ function Dashboard() {
           </div>
         ) : lancamentos.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>
-              Nenhum lançamento para exibir
-            </p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nenhum lançamento para exibir</p>
           </div>
         ) : (
           <GraficoBarras lancamentos={lancamentos} />
@@ -530,42 +456,6 @@ function Dashboard() {
       </div>
     </div>
   )
-}
-
-// ==========================================
-// COMPONENTE: Gráfico de Pizza para Subcategorias
-// ==========================================
-function GraficoPizzaSubcategorias({ dados }) {
-  const cores = ['#fc8181', '#f6ad55', '#68d391', '#63b3ed', '#b794f4', '#f687b3', '#4fd1c5', '#fbd38d']
-
-  const data = {
-    labels: dados.map(item => item.nome),
-    datasets: [
-      {
-        data: dados.map(item => item.valor),
-        backgroundColor: cores.slice(0, dados.length),
-        borderWidth: 2,
-        borderColor: '#0d1b2a'
-      }
-    ]
-  }
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: {
-          color: 'rgba(255,255,255,0.6)',
-          font: { size: 11 }
-        }
-      }
-    }
-  }
-
-  const { Pie } = require('react-chartjs-2')
-  return <Pie data={data} options={options} />
 }
 
 export default Dashboard
