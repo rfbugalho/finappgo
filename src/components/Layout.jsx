@@ -117,7 +117,7 @@ function Layout({ children }) {
       overflow: 'hidden'
     }}>
       {/* ==========================================
-          OVERLAY (mobile) - Fecha o menu ao clicar fora
+          OVERLAY (mobile)
           ========================================== */}
       {isMobile && sidebarOpen && (
         <div
@@ -137,7 +137,7 @@ function Layout({ children }) {
       )}
 
       {/* ==========================================
-          SIDEBAR - Menu lateral
+          SIDEBAR
           ========================================== */}
       <div style={{
         width: isMobile ? '280px' : (sidebarOpen ? '280px' : '60px'),
@@ -177,7 +177,6 @@ function Layout({ children }) {
               </span>
             )}
           </div>
-          {/* Botão fechar no mobile */}
           {isMobile && sidebarOpen && (
             <button
               onClick={closeSidebar}
@@ -261,7 +260,7 @@ function Layout({ children }) {
           ))}
         </div>
 
-        {/* BOTÃO RECOLHER/EXPANDIR (apenas desktop) */}
+        {/* BOTÃO RECOLHER/EXPANDIR (desktop) */}
         {!isMobile && (
           <button
             onClick={toggleSidebar}
@@ -297,9 +296,10 @@ function Layout({ children }) {
         flexDirection: 'column',
         minWidth: 0,
         backgroundColor: '#0d1b2a',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        height: '100vh'
       }}>
-        {/* HEADER SUPERIOR */}
+        {/* HEADER */}
         <header style={{
           backgroundColor: '#1a2b4a',
           padding: 'clamp(8px, 1.5vw, 15px) clamp(12px, 2vw, 30px)',
@@ -310,10 +310,10 @@ function Layout({ children }) {
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           gap: '10px',
           flexWrap: 'wrap',
-          minHeight: 'clamp(50px, 8vh, 70px)'
+          minHeight: 'clamp(50px, 8vh, 70px)',
+          zIndex: 1
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Botão Menu Hamburguer (mobile) */}
             {isMobile && (
               <button
                 onClick={toggleSidebar}
@@ -347,7 +347,6 @@ function Layout({ children }) {
             gap: 'clamp(8px, 1.5vw, 20px)',
             flexWrap: 'wrap'
           }}>
-            {/* Notificações */}
             <span style={{ 
               fontSize: 'clamp(16px, 2vw, 20px)', 
               cursor: 'pointer',
@@ -369,7 +368,6 @@ function Layout({ children }) {
               </span>
             </span>
             
-            {/* Usuário */}
             <span style={{ 
               color: 'rgba(255,255,255,0.8)',
               fontSize: 'clamp(10px, 1.5vw, 14px)',
@@ -387,7 +385,6 @@ function Layout({ children }) {
               </span>
             </span>
             
-            {/* Botão Sair */}
             <button
               onClick={handleLogout}
               style={{
@@ -416,14 +413,26 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* ÁREA DE CONTEÚDO */}
+        {/* ==========================================
+            CONTEÚDO - CORRIGIDO O SCROLL
+            ========================================== */}
         <main style={{
           flex: 1,
           padding: isMobile ? 'clamp(8px, 2vw, 15px)' : 'clamp(15px, 3vw, 30px)',
           overflowY: 'auto',
-          backgroundColor: '#0d1b2a'
+          overflowX: 'hidden',
+          backgroundColor: '#0d1b2a',
+          minHeight: 0,
+          height: '100%',
+          maxHeight: '100%',
+          position: 'relative'
         }}>
-          {children}
+          <div style={{
+            minHeight: '100%',
+            paddingBottom: isMobile ? '80px' : '40px'
+          }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>
