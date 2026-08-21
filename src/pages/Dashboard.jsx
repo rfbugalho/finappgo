@@ -44,11 +44,28 @@ function GraficoPizzaSubcategorias({ dados }) {
 }
 
 function Dashboard() {
+  // ==========================================
+  // ESTADOS PRINCIPAIS
+  // ==========================================
   const [lancamentos, setLancamentos] = useState([])
+  const [lancamentosFiltrados, setLancamentosFiltrados] = useState([])
   const [contas, setContas] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [metas, setMetas] = useState([])
   const [carregando, setCarregando] = useState(true)
+
+  // ==========================================
+  // ESTADOS DOS FILTROS
+  // ==========================================
+  const [filtros, setFiltros] = useState({
+    mes: new Date().getMonth() + 1,
+    ano: new Date().getFullYear(),
+    tipo: 'todos'
+  })
+
+  // ==========================================
+  // ESTADOS DOS INDICADORES
+  // ==========================================
   const [totalReceitas, setTotalReceitas] = useState(0)
   const [totalDespesas, setTotalDespesas] = useState(0)
   const [saldo, setSaldo] = useState(0)
@@ -64,15 +81,13 @@ function Dashboard() {
   const [dadosSubcategorias, setDadosSubcategorias] = useState([])
 
   // ==========================================
-  // INDICADORES AVANÇADOS
+  // ESTADOS DOS INDICADORES AVANÇADOS
   // ==========================================
-  const [gastosPorMes, setGastosPorMes] = useState([])
   const [categoriaMaisCara, setCategoriaMaisCara] = useState(null)
   const [ticketMedio, setTicketMedio] = useState(0)
   const [previsaoGastos, setPrevisaoGastos] = useState(0)
-  const [top5Despesas, setTop5Despesas] = useState([])
   const [velocidadeGastos, setVelocidadeGastos] = useState(0)
-  const [receitasPorMes, setReceitasPorMes] = useState([])
+  const [top5Despesas, setTop5Despesas] = useState([])
 
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
@@ -98,11 +113,39 @@ function Dashboard() {
     setCartoes(dadosCartoes)
     setMetas(dadosMetas)
     
-    const receitas = dadosLancamentos
+    setCarregando(false)
+  }
+
+  // ==========================================
+  // APLICAR FILTROS
+  // ==========================================
+  const aplicarFiltros = () => {
+    let dados = [...lancamentos]
+
+    // Filtro por período (mês/ano)
+    const mesStr = String(filtros.mes).padStart(2, '0')
+    const anoStr = String(filtros.ano)
+    dados = dados.filter(item => {
+      if (!item.data) return false
+      const partes = item.data.split('-')
+      return partes[0] === anoStr && partes[1] === mesStr
+    })
+
+    // Filtro por tipo
+    if (filtros.tipo !== 'todos') {
+      dados = dados.filter(item => item.tipo === filtros.tipo)
+    }
+
+    setLancamentosFiltrados(dados)
+
+    // ==========================================
+    // CALCULAR INDICADORES DO PERÍODO
+    // ==========================================
+    const receitas = dados
       .filter(item => item.tipo === 'receita')
       .reduce((acc, item) => acc + item.valor, 0)
     
-    const despesas = dadosLancamentos
+    const despesas = dados
       .filter(item => item.tipo === 'despesa')
       .reduce((acc, item) => acc + item.valor, 0)
     
@@ -114,21 +157,26 @@ function Dashboard() {
     setSaldo(saldoTotal)
     setEconomiaPercentual(economia)
 
-    const despesasFiltradas = dadosLancamentos.filter(item => item.tipo === 'despesa')
+    // Despesas do período filtrado
+    const despesasFiltradas = dados.filter(item => item.tipo === 'despesa')
     
+    // Despesas vencidas (data < hoje)
     const vencidas = despesasFiltradas.filter(item => item.data < hojeStr)
     setDespesasVencidas(vencidas)
     setValorTotalVencido(vencidas.reduce((acc, item) => acc + item.valor, 0))
     
+    // Despesas de hoje
     const hojeDespesas = despesasFiltradas.filter(item => item.data === hojeStr)
     setDespesasHoje(hojeDespesas)
     setValorTotalHoje(hojeDespesas.reduce((acc, item) => acc + item.valor, 0))
     
+    // Despesas dos próximos 7 dias (excluindo hoje)
     const proximosDias = despesasFiltradas.filter(item => 
       item.data > hojeStr && item.data <= proximos7DiasStr
     )
     setDespesasProximosDias(proximosDias)
 
+    // Categorias
     const catMap = {}
     despesasFiltradas.forEach(item => {
       const cat = item.categoria || 'Sem categoria'
@@ -137,6 +185,7 @@ function Dashboard() {
     })
     setDadosCategorias(Object.entries(catMap).map(([nome, valor]) => ({ nome, valor })))
 
+    // Subcategorias
     const subMap = {}
     despesasFiltradas.forEach(item => {
       const sub = item.subcategoria || 'Sem subcategoria'
@@ -146,32 +195,10 @@ function Dashboard() {
     setDadosSubcategorias(Object.entries(subMap).map(([nome, valor]) => ({ nome, valor })))
 
     // ==========================================
-    // CALCULAR INDICADORES AVANÇADOS
+    // INDICADORES AVANÇADOS
     // ==========================================
 
-    // 1. Gastos por Mês (últimos 6 meses)
-    const mesesLabels = []
-    const gastosMeses = []
-    const receitasMeses = []
-    for (let i = 5; i >= 0; i--) {
-      const data = new Date(anoAtual, mesAtual - i, 1)
-      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
-      mesesLabels.push(data.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }))
-      
-      const gastosMes = dadosLancamentos
-        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
-        .reduce((acc, item) => acc + item.valor, 0)
-      gastosMeses.push(gastosMes)
-      
-      const receitasMes = dadosLancamentos
-        .filter(item => item.tipo === 'receita' && item.data.startsWith(mesStr))
-        .reduce((acc, item) => acc + item.valor, 0)
-      receitasMeses.push(receitasMes)
-    }
-    setGastosPorMes(gastosMeses)
-    setReceitasPorMes(receitasMeses)
-
-    // 2. Categoria Mais Cara
+    // Categoria Mais Cara
     if (dadosCategorias.length > 0) {
       const maisCara = dadosCategorias.reduce((max, cat) => 
         cat.valor > max.valor ? cat : max
@@ -179,59 +206,80 @@ function Dashboard() {
       setCategoriaMaisCara(maisCara)
     }
 
-    // 3. Ticket Médio
-    const totalDespesasMes = dadosLancamentos
-      .filter(item => item.tipo === 'despesa')
-      .reduce((acc, item) => acc + item.valor, 0)
-    const qtdDespesas = dadosLancamentos.filter(item => item.tipo === 'despesa').length
+    // Ticket Médio
+    const totalDespesasMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
+    const qtdDespesas = despesasFiltradas.length
     setTicketMedio(qtdDespesas > 0 ? totalDespesasMes / qtdDespesas : 0)
 
-    // 4. Previsão de Gastos (média dos últimos 3 meses * 1.1)
+    // Previsão de Gastos (média dos últimos 3 meses do período)
+    const mesAtualFiltro = filtros.mes
+    const anoAtualFiltro = filtros.ano
     const ultimos3Meses = []
     for (let i = 1; i <= 3; i++) {
-      const data = new Date(anoAtual, mesAtual - i, 1)
-      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
-      const gastos = dadosLancamentos
-        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+      let mes = mesAtualFiltro - i
+      let ano = anoAtualFiltro
+      if (mes <= 0) {
+        mes += 12
+        ano -= 1
+      }
+      const mesStrPrev = String(mes).padStart(2, '0')
+      const anoStrPrev = String(ano)
+      const gastos = lancamentos
+        .filter(item => {
+          if (!item.data) return false
+          const partes = item.data.split('-')
+          return item.tipo === 'despesa' && partes[0] === anoStrPrev && partes[1] === mesStrPrev
+        })
         .reduce((acc, item) => acc + item.valor, 0)
       ultimos3Meses.push(gastos)
     }
-    const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.length
+    const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.filter(m => m > 0).length || 0
     setPrevisaoGastos(media3Meses * 1.1)
 
-    // 5. Top 5 Despesas do Mês
-    const mesStr = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`
-    const despesasMes = dadosLancamentos
-      .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+    // Top 5 Despesas do período
+    const mesStrTop = String(filtros.mes).padStart(2, '0')
+    const anoStrTop = String(filtros.ano)
+    const despesasTop = lancamentos
+      .filter(item => {
+        if (!item.data) return false
+        const partes = item.data.split('-')
+        return item.tipo === 'despesa' && partes[0] === anoStrTop && partes[1] === mesStrTop
+      })
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
-    setTop5Despesas(despesasMes)
+    setTop5Despesas(despesasTop)
 
-    // 6. Velocidade de Gastos (média por dia no mês)
-    const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate()
-    const totalGastoMes = dadosLancamentos
-      .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
-      .reduce((acc, item) => acc + item.valor, 0)
+    // Velocidade de Gastos (média por dia no mês)
+    const diasNoMes = new Date(filtros.ano, filtros.mes, 0).getDate()
+    const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
-
-    setCarregando(false)
   }
 
+  // ==========================================
+  // EFECTS
+  // ==========================================
   useEffect(() => {
     carregarDados()
   }, [])
+
+  useEffect(() => {
+    if (!carregando) {
+      aplicarFiltros()
+    }
+  }, [lancamentos, filtros, carregando])
+
+  // ==========================================
+  // FUNÇÕES DOS FILTROS
+  // ==========================================
+  const handleFiltroChange = (campo, valor) => {
+    setFiltros(prev => ({ ...prev, [campo]: valor }))
+  }
 
   // ==========================================
   // FORMATADORES
   // ==========================================
   const formatarMoeda = (valor) => {
     return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
   }
 
   const getBandeiraEmoji = (bandeira) => {
@@ -254,32 +302,124 @@ function Dashboard() {
     }
   }
 
+  // ==========================================
+  // RENDER
+  // ==========================================
   return (
     <div style={{ 
       padding: '0 10px',
       maxWidth: '100%',
       overflowX: 'hidden'
     }}>
-      {/* TÍTULO */}
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ 
-          fontSize: 'clamp(20px, 4vw, 28px)', 
-          color: '#ffffff',
-          fontWeight: '600',
-          marginBottom: '4px'
+      {/* TÍTULO E FILTROS */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px',
+        marginBottom: '20px'
+      }}>
+        <div>
+          <h2 style={{ 
+            fontSize: 'clamp(20px, 4vw, 28px)', 
+            color: '#ffffff',
+            fontWeight: '600',
+            marginBottom: '4px'
+          }}>
+            📊 Visão Geral
+          </h2>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.5)', 
+            fontSize: 'clamp(12px, 2vw, 14px)'
+          }}>
+            {carregando ? 'Carregando...' : 
+              `${lancamentosFiltrados.length} lançamento(s) · ${contas.length} conta(s) · ${cartoes.length} cartão(ões) · ${metas.length} meta(s)`}
+          </p>
+        </div>
+        
+        {/* FILTROS */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexWrap: 'wrap'
         }}>
-          📊 Visão Geral
-        </h2>
-        <p style={{ 
-          color: 'rgba(255,255,255,0.5)', 
-          fontSize: 'clamp(12px, 2vw, 14px)'
-        }}>
-          {carregando ? 'Carregando...' : `${lancamentos.length} lançamento(s) · ${contas.length} conta(s) · ${cartoes.length} cartão(ões) · ${metas.length} meta(s)`}
-        </p>
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '2px' }}>
+              Mês
+            </label>
+            <select
+              value={filtros.mes}
+              onChange={(e) => handleFiltroChange('mes', parseInt(e.target.value))}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                fontSize: '13px',
+                minWidth: '110px'
+              }}
+            >
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
+                  {new Date(2024, m-1).toLocaleString('pt-BR', { month: 'short' })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '2px' }}>
+              Ano
+            </label>
+            <select
+              value={filtros.ano}
+              onChange={(e) => handleFiltroChange('ano', parseInt(e.target.value))}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                fontSize: '13px',
+                minWidth: '80px'
+              }}
+            >
+              {[2024, 2025, 2026, 2027, 2028].map(a => (
+                <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '2px' }}>
+              Tipo
+            </label>
+            <select
+              value={filtros.tipo}
+              onChange={(e) => handleFiltroChange('tipo', e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                fontSize: '13px',
+                minWidth: '100px'
+              }}
+            >
+              <option value="todos" style={{ backgroundColor: '#1a2b4a' }}>Todos</option>
+              <option value="receita" style={{ backgroundColor: '#1a2b4a' }}>📈 Receitas</option>
+              <option value="despesa" style={{ backgroundColor: '#1a2b4a' }}>📉 Despesas</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* ==========================================
-          RESUMO FINANCEIRO (4 CARDS NO TOPO)
+          RESUMO FINANCEIRO (4 CARDS)
           ========================================== */}
       <div style={{
         display: 'grid',
@@ -293,7 +433,7 @@ function Dashboard() {
           borderRadius: '10px',
           border: '1px solid rgba(45,138,78,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Total Receitas</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Receitas</p>
           <p style={{ color: '#2d8a4e', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : formatarMoeda(totalReceitas)}
           </p>
@@ -304,7 +444,7 @@ function Dashboard() {
           borderRadius: '10px',
           border: '1px solid rgba(217,74,74,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Total Despesas</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Despesas</p>
           <p style={{ color: '#d94a4a', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : formatarMoeda(totalDespesas)}
           </p>
@@ -334,7 +474,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          CARDS SUPERIORES (Score Geral, Saldo Total, Contas, Despesas Pendentes)
+          CARDS SUPERIORES
           ========================================== */}
       <div style={{
         display: 'grid',
@@ -352,7 +492,7 @@ function Dashboard() {
         <Card 
           titulo="SALDO TOTAL" 
           valor={carregando ? '...' : formatarMoeda(saldo)}
-          subtitulo={`${lancamentos.length} movimentações`}
+          subtitulo={`${lancamentosFiltrados.length} movimentações`}
           cor="#3a7abd"
           icone="💰"
         />
@@ -724,12 +864,14 @@ function Dashboard() {
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
-          🔥 Top 5 Despesas do Mês
+          🔥 Top 5 Despesas do Período
         </h3>
         {carregando ? (
           <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
         ) : top5Despesas.length === 0 ? (
-          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Nenhuma despesa neste mês</p>
+          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+            Nenhuma despesa no período selecionado
+          </p>
         ) : (
           <div style={{
             display: 'grid',
@@ -889,7 +1031,7 @@ function Dashboard() {
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nenhum dado disponível</p>
             </div>
           ) : (
-            <GraficoPizza lancamentos={lancamentos} />
+            <GraficoPizza lancamentos={lancamentosFiltrados} />
           )}
         </div>
 
@@ -949,12 +1091,12 @@ function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80%' }}>
             <p style={{ color: 'rgba(255,255,255,0.3)' }}>Carregando...</p>
           </div>
-        ) : lancamentos.length === 0 ? (
+        ) : lancamentosFiltrados.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80%' }}>
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nenhum lançamento para exibir</p>
           </div>
         ) : (
-          <GraficoBarras lancamentos={lancamentos} />
+          <GraficoBarras lancamentos={lancamentosFiltrados} />
         )}
       </div>
     </div>
