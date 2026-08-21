@@ -60,8 +60,9 @@ function Layout({ children }) {
   // Detectar se é mobile
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
-      if (window.innerWidth > 768) {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (!mobile) {
         setSidebarOpen(true)
       } else {
         setSidebarOpen(false)
@@ -103,6 +104,10 @@ function Layout({ children }) {
     setSidebarOpen(!sidebarOpen)
   }
 
+  const closeSidebar = () => {
+    setSidebarOpen(false)
+  }
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -112,32 +117,33 @@ function Layout({ children }) {
       overflow: 'hidden'
     }}>
       {/* ==========================================
-          OVERLAY (mobile)
+          OVERLAY (mobile) - Fecha o menu ao clicar fora
           ========================================== */}
       {isMobile && sidebarOpen && (
         <div
-          onClick={toggleSidebar}
+          onClick={closeSidebar}
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.6)',
             zIndex: 999,
-            backdropFilter: 'blur(2px)'
+            backdropFilter: 'blur(4px)',
+            animation: 'fadeIn 0.3s ease'
           }}
         />
       )}
 
       {/* ==========================================
-          SIDEBAR
+          SIDEBAR - Menu lateral
           ========================================== */}
       <div style={{
         width: isMobile ? '280px' : (sidebarOpen ? '280px' : '60px'),
         backgroundColor: '#0a1628',
         color: '#fff',
-        transition: 'width 0.3s ease, transform 0.3s ease',
+        transition: isMobile ? 'transform 0.3s ease' : 'width 0.3s ease',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -147,7 +153,8 @@ function Layout({ children }) {
         bottom: 0,
         zIndex: 1000,
         transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
-        flexShrink: 0
+        flexShrink: 0,
+        boxShadow: isMobile && sidebarOpen ? '4px 0 20px rgba(0,0,0,0.5)' : 'none'
       }}>
         {/* LOGO */}
         <div style={{
@@ -155,29 +162,32 @@ function Layout({ children }) {
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          justifyContent: sidebarOpen ? 'space-between' : 'center',
           minHeight: 'clamp(50px, 8vh, 70px)'
         }}>
-          <span style={{ fontSize: 'clamp(24px, 4vw, 28px)' }}>💰</span>
-          {sidebarOpen && (
-            <span style={{ 
-              fontSize: 'clamp(18px, 3vw, 20px)', 
-              fontWeight: 'bold',
-              color: '#ffffff'
-            }}>
-              FinAppGO
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: 'clamp(24px, 4vw, 28px)' }}>💰</span>
+            {sidebarOpen && (
+              <span style={{ 
+                fontSize: 'clamp(18px, 3vw, 20px)', 
+                fontWeight: 'bold',
+                color: '#ffffff'
+              }}>
+                FinAppGO
+              </span>
+            )}
+          </div>
+          {/* Botão fechar no mobile */}
           {isMobile && sidebarOpen && (
             <button
-              onClick={toggleSidebar}
+              onClick={closeSidebar}
               style={{
-                marginLeft: 'auto',
                 backgroundColor: 'transparent',
                 border: 'none',
-                color: '#fff',
+                color: 'rgba(255,255,255,0.6)',
                 fontSize: '24px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                padding: '4px 8px'
               }}
             >
               ✕
@@ -222,6 +232,9 @@ function Layout({ children }) {
                   <Link
                     key={subIndex}
                     to={sub.rota}
+                    onClick={() => {
+                      if (isMobile) closeSidebar()
+                    }}
                     style={{
                       display: 'block',
                       padding: sidebarOpen ? '10px 20px' : '10px 12px',
@@ -308,10 +321,13 @@ function Layout({ children }) {
                   backgroundColor: 'transparent',
                   border: 'none',
                   color: '#fff',
-                  fontSize: 'clamp(22px, 4vw, 28px)',
+                  fontSize: 'clamp(24px, 4vw, 30px)',
                   cursor: 'pointer',
-                  padding: '4px'
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
+                aria-label="Abrir menu"
               >
                 ☰
               </button>
