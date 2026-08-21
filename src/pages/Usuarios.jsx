@@ -13,7 +13,6 @@ function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [carregando, setCarregando] = useState(true)
   
-  // Modal Convidar
   const [modalAberto, setModalAberto] = useState(false)
   const [formData, setFormData] = useState({
     nome: '',
@@ -23,7 +22,6 @@ function Usuarios() {
   const [senhaGerada, setSenhaGerada] = useState('')
   const [erro, setErro] = useState('')
 
-  // Modal Editar
   const [modalEditarAberto, setModalEditarAberto] = useState(false)
   const [usuarioEditando, setUsuarioEditando] = useState(null)
 
@@ -33,9 +31,6 @@ function Usuarios() {
     { valor: 'visualizador', label: '👀 Visualizador', descricao: 'Apenas visualização' }
   ]
 
-  // ==========================================
-  // CARREGAR DADOS
-  // ==========================================
   const carregarUsuarios = async () => {
     setCarregando(true)
     const dados = await buscarUsuarios()
@@ -47,9 +42,6 @@ function Usuarios() {
     carregarUsuarios()
   }, [])
 
-  // ==========================================
-  // FUNÇÕES
-  // ==========================================
   const abrirModalConvidar = () => {
     const senha = gerarSenhaTemporaria()
     setSenhaGerada(senha)
@@ -86,7 +78,7 @@ function Usuarios() {
       
       await carregarUsuarios()
       setModalAberto(false)
-      alert(`Usuário convidado com sucesso!\n\nE-mail: ${formData.email}\nSenha: ${senhaGerada}\n\n⚠️ Anote a senha e compartilhe com o usuário!`)
+      alert(`Usuário convidado com sucesso!\n\nE-mail: ${formData.email}\nSenha: ${senhaGerada}`)
     } catch (error) {
       console.error(error)
       if (error.code === 'auth/email-already-in-use') {
@@ -136,9 +128,6 @@ function Usuarios() {
     }
   }
 
-  // ==========================================
-  // FORMATADORES
-  // ==========================================
   const getPermissaoLabel = (permissao) => {
     const p = permissoes.find(p => p.valor === permissao)
     return p ? p.label : permissao
@@ -152,9 +141,6 @@ function Usuarios() {
     return status === 'ativo' ? '✅ Ativo' : '❌ Inativo'
   }
 
-  // ==========================================
-  // RENDER
-  // ==========================================
   return (
     <div>
       {/* CABEÇALHO */}
@@ -312,9 +298,7 @@ function Usuarios() {
         )}
       </div>
 
-      {/* ==========================================
-          MODAL - CONVIDAR USUÁRIO
-          ========================================== */}
+      {/* MODAL CONVIDAR */}
       {modalAberto && (
         <div style={{
           position: 'fixed',
@@ -335,9 +319,7 @@ function Usuarios() {
             borderRadius: '16px',
             maxWidth: '480px',
             width: '100%',
-            border: '1px solid rgba(255,255,255,0.08)',
-            maxHeight: '90vh',
-            overflowY: 'auto'
+            border: '1px solid rgba(255,255,255,0.08)'
           }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '20px', color: '#ffffff', marginBottom: '4px' }}>
               👤 Convidar Usuário
@@ -498,9 +480,7 @@ function Usuarios() {
         </div>
       )}
 
-      {/* ==========================================
-          MODAL - EDITAR USUÁRIO
-          ========================================== */}
+      {/* MODAL EDITAR */}
       {modalEditarAberto && usuarioEditando && (
         <div style={{
           position: 'fixed',
