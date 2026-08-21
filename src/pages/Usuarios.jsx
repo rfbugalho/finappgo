@@ -4,8 +4,7 @@ import {
   convidarUsuario, 
   atualizarUsuario, 
   excluirUsuario,
-  gerarSenhaTemporaria,
-  verificarPermissao
+  gerarSenhaTemporaria
 } from '../firebase/usuariosService'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
@@ -13,7 +12,6 @@ import { auth } from '../firebase/firebase'
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [carregando, setCarregando] = useState(true)
-  const [permissaoAtual, setPermissaoAtual] = useState('admin')
   
   // Modal Convidar
   const [modalAberto, setModalAberto] = useState(false)
@@ -47,7 +45,6 @@ function Usuarios() {
 
   useEffect(() => {
     carregarUsuarios()
-    verificarPermissao().then(setPermissaoAtual)
   }, [])
 
   // ==========================================
