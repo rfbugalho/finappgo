@@ -10,6 +10,7 @@ import Cartoes from './pages/Cartoes'
 import Metas from './pages/Metas'
 import Veiculos from './pages/Veiculos'
 import Residencias from './pages/Residencias'
+import Recorrencias from './pages/Recorrencias'
 import Login from './pages/Login'
 
 // ==========================================
@@ -90,6 +91,14 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      <Route path="/recorrencias" element={
+  <PrivateRoute>
+    <Layout>
+      <Recorrencias />
+    </Layout>
+  </PrivateRoute>
+} />
+
       <Route path="/categorias" element={
         <PrivateRoute>
           <Layout>

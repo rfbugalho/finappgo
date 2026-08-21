@@ -15,16 +15,17 @@ const MENUS = [
     ]
   },
   {
-    grupo: "FINANCEIRO",
-    icone: "💰",
-    submenus: [
-      { nome: "Lançamentos", rota: "/lancamentos" },
-      { nome: "Categorias", rota: "/categorias" },
-      { nome: "Contas", rota: "/contas" },
-      { nome: "Cartões", rota: "/cartoes" },
-      { nome: "Relatórios", rota: "/relatorios" }
-    ]
-  },
+  grupo: "FINANCEIRO",
+  icone: "💰",
+  submenus: [
+    { nome: "Lançamentos", rota: "/lancamentos" },
+    { nome: "Categorias", rota: "/categorias" },
+    { nome: "Contas", rota: "/contas" },
+    { nome: "Cartões", rota: "/cartoes" },
+    { nome: "Recorrências", rota: "/recorrencias" },
+    { nome: "Relatórios", rota: "/relatorios" }
+  ]
+},
   {
     grupo: "PATRIMÔNIO",
     icone: "🏠",
