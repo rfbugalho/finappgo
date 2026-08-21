@@ -9,6 +9,7 @@ import Contas from './pages/Contas'
 import Cartoes from './pages/Cartoes'
 import Metas from './pages/Metas'
 import Veiculos from './pages/Veiculos'
+import Residencias from './pages/Residencias'
 import Login from './pages/Login'
 
 // ==========================================
@@ -140,6 +141,14 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
+
+      <Route path="/residencias" element={
+  <PrivateRoute>
+    <Layout>
+      <Residencias />
+    </Layout>
+  </PrivateRoute>
+} />
       
       {/* INVESTIMENTOS */}
       <Route path="/carteira" element={

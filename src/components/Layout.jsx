@@ -29,7 +29,8 @@ const MENUS = [
     grupo: "PATRIMÔNIO",
     icone: "🏠",
     submenus: [
-      { nome: "Veículos", rota: "/veiculos" }
+      { nome: "Veículos", rota: "/veiculos" },
+      { nome: "Residências", rota: "/residencias" }
     ]
   },
   {
