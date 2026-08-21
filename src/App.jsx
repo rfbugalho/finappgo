@@ -8,6 +8,7 @@ import Categorias from './pages/Categorias'
 import Contas from './pages/Contas'
 import Cartoes from './pages/Cartoes'
 import Metas from './pages/Metas'
+import Veiculos from './pages/Veiculos'
 import Login from './pages/Login'
 
 // ==========================================
@@ -95,15 +96,7 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
-
-      <Route path="/metas" element={
-  <PrivateRoute>
-    <Layout>
-      <Metas />
-    </Layout>
-  </PrivateRoute>
-} />
-
+      
       <Route path="/contas" element={
         <PrivateRoute>
           <Layout>
@@ -120,6 +113,14 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
+      <Route path="/metas" element={
+        <PrivateRoute>
+          <Layout>
+            <Metas />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
       <Route path="/relatorios" element={
         <PrivateRoute>
           <Layout>
@@ -127,6 +128,15 @@ function AppRoutes() {
               <h2 style={{ fontSize: '24px', color: '#ffffff' }}>📊 Relatórios</h2>
               <p style={{ color: 'rgba(255,255,255,0.5)' }}>Visualize relatórios detalhados</p>
             </div>
+          </Layout>
+        </PrivateRoute>
+      } />
+      
+      {/* PATRIMÔNIO */}
+      <Route path="/veiculos" element={
+        <PrivateRoute>
+          <Layout>
+            <Veiculos />
           </Layout>
         </PrivateRoute>
       } />

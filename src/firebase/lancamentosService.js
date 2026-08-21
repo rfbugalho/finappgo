@@ -41,6 +41,56 @@ export const buscarLancamentos = async () => {
 }
 
 // ==========================================
+// BUSCAR LANÇAMENTOS POR CATEGORIA
+// ==========================================
+export const buscarLancamentosPorCategoria = async (categoria) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      where('userId', '==', user.uid),
+      where('categoria', '==', categoria)
+    )
+    const querySnapshot = await getDocs(q)
+    const lista = []
+    querySnapshot.forEach((doc) => {
+      lista.push({ id: doc.id, ...doc.data() })
+    })
+    return lista
+  } catch (error) {
+    console.error('Erro ao buscar lançamentos por categoria:', error)
+    return []
+  }
+}
+
+// ==========================================
+// BUSCAR LANÇAMENTOS POR SUBCATEGORIA
+// ==========================================
+export const buscarLancamentosPorSubcategoria = async (subcategoria) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      where('userId', '==', user.uid),
+      where('subcategoria', '==', subcategoria)
+    )
+    const querySnapshot = await getDocs(q)
+    const lista = []
+    querySnapshot.forEach((doc) => {
+      lista.push({ id: doc.id, ...doc.data() })
+    })
+    return lista
+  } catch (error) {
+    console.error('Erro ao buscar lançamentos por subcategoria:', error)
+    return []
+  }
+}
+
+// ==========================================
 // BUSCAR LANÇAMENTOS POR CONTA
 // ==========================================
 export const buscarLancamentosPorConta = async (contaId) => {
@@ -62,6 +112,39 @@ export const buscarLancamentosPorConta = async (contaId) => {
     return lista
   } catch (error) {
     console.error('Erro ao buscar lançamentos por conta:', error)
+    return []
+  }
+}
+
+// ==========================================
+// BUSCAR LANÇAMENTOS POR PERÍODO
+// ==========================================
+export const buscarLancamentosPorPeriodo = async (mes, ano) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const mesStr = String(mes).padStart(2, '0')
+    const anoStr = String(ano)
+    const dataInicio = `${anoStr}-${mesStr}-01`
+    const ultimoDia = new Date(ano, mes, 0).getDate()
+    const dataFim = `${anoStr}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`
+
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      where('userId', '==', user.uid),
+      where('data', '>=', dataInicio),
+      where('data', '<=', dataFim),
+      orderBy('data', 'desc')
+    )
+    const querySnapshot = await getDocs(q)
+    const lista = []
+    querySnapshot.forEach((doc) => {
+      lista.push({ id: doc.id, ...doc.data() })
+    })
+    return lista
+  } catch (error) {
+    console.error('Erro ao buscar lançamentos por período:', error)
     return []
   }
 }

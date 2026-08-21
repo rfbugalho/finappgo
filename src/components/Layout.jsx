@@ -19,10 +19,24 @@ const MENUS = [
     icone: "💰",
     submenus: [
       { nome: "Lançamentos", rota: "/lancamentos" },
-      { nome: "Cartões", rota: "/cartoes" },
       { nome: "Categorias", rota: "/categorias" },
       { nome: "Contas", rota: "/contas" },
+      { nome: "Cartões", rota: "/cartoes" },
       { nome: "Relatórios", rota: "/relatorios" }
+    ]
+  },
+  {
+    grupo: "PATRIMÔNIO",
+    icone: "🏠",
+    submenus: [
+      { nome: "Veículos", rota: "/veiculos" }
+    ]
+  },
+  {
+    grupo: "OBJETIVOS",
+    icone: "🎯",
+    submenus: [
+      { nome: "Metas", rota: "/metas" }
     ]
   },
   {
@@ -33,13 +47,6 @@ const MENUS = [
       { nome: "Rendimentos", rota: "/rendimentos" }
     ]
   },
-  {
-  grupo: "OBJETIVOS",
-  icone: "🎯",
-  submenus: [
-    { nome: "Metas", rota: "/metas" }
-  ]
-},
   {
     grupo: "ADMINISTRAÇÃO",
     icone: "⚙️",
@@ -55,12 +62,18 @@ function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // ==========================================
+  // FUNÇÃO PARA ENCONTRAR O TÍTULO DA PÁGINA
+  // ==========================================
   const getPageTitle = () => {
     const allSubmenus = MENUS.flatMap(grupo => grupo.submenus)
     const current = allSubmenus.find(sub => sub.rota === location.pathname)
     return current ? current.nome : 'Dashboard'
   }
 
+  // ==========================================
+  // FUNÇÃO PARA SAIR (LOGOUT)
+  // ==========================================
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -121,6 +134,7 @@ function Layout({ children }) {
         }}>
           {MENUS.map((grupo, index) => (
             <div key={index} style={{ marginBottom: '5px' }}>
+              {/* Título do grupo */}
               <div style={{
                 padding: '10px 20px',
                 fontSize: '11px',
@@ -133,6 +147,7 @@ function Layout({ children }) {
                 {sidebarOpen ? `${grupo.icone} ${grupo.grupo}` : grupo.icone}
               </div>
               
+              {/* Submenus */}
               {grupo.submenus.map((sub, subIndex) => {
                 const isActive = location.pathname === sub.rota
                 return (
@@ -195,8 +210,7 @@ function Layout({ children }) {
         display: 'flex', 
         flexDirection: 'column',
         minWidth: 0,
-        backgroundColor: '#0d1b2a',
-        overflow: 'hidden'
+        backgroundColor: '#0d1b2a'
       }}>
         {/* HEADER SUPERIOR */}
         <header style={{
@@ -258,11 +272,8 @@ function Layout({ children }) {
               whiteSpace: 'nowrap'
             }}>
               <span style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}>👤</span>
-              <span style={{ display: 'none', '@media (min-width: 768px)': { display: 'inline' } }}>
+              <span style={{ display: 'inline', '@media (min-width: 768px)': { display: 'inline' } }}>
                 rafaelbugalho@finappgo.com.br
-              </span>
-              <span style={{ display: 'inline', '@media (min-width: 768px)': { display: 'none' } }}>
-                Usuário
               </span>
             </span>
             
@@ -295,7 +306,7 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* ÁREA DE CONTEÚDO - RESPONSIVA */}
+        {/* ÁREA DE CONTEÚDO */}
         <main style={{
           flex: 1,
           padding: 'clamp(10px, 3vw, 30px)',
