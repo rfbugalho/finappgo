@@ -11,6 +11,7 @@ import Metas from './pages/Metas'
 import Veiculos from './pages/Veiculos'
 import Residencias from './pages/Residencias'
 import Recorrencias from './pages/Recorrencias'
+import Usuarios from './pages/Usuarios'
 import Login from './pages/Login'
 
 // ==========================================
