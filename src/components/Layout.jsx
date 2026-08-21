@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
@@ -15,17 +15,17 @@ const MENUS = [
     ]
   },
   {
-  grupo: "FINANCEIRO",
-  icone: "💰",
-  submenus: [
-    { nome: "Lançamentos", rota: "/lancamentos" },
-    { nome: "Categorias", rota: "/categorias" },
-    { nome: "Contas", rota: "/contas" },
-    { nome: "Cartões", rota: "/cartoes" },
-    { nome: "Recorrências", rota: "/recorrencias" },
-    { nome: "Relatórios", rota: "/relatorios" }
-  ]
-},
+    grupo: "FINANCEIRO",
+    icone: "💰",
+    submenus: [
+      { nome: "Lançamentos", rota: "/lancamentos" },
+      { nome: "Categorias", rota: "/categorias" },
+      { nome: "Contas", rota: "/contas" },
+      { nome: "Cartões", rota: "/cartoes" },
+      { nome: "Recorrências", rota: "/recorrencias" },
+      { nome: "Relatórios", rota: "/relatorios" }
+    ]
+  },
   {
     grupo: "PATRIMÔNIO",
     icone: "🏠",
@@ -42,14 +42,6 @@ const MENUS = [
     ]
   },
   {
-    grupo: "INVESTIMENTOS",
-    icone: "📊",
-    submenus: [
-      { nome: "Carteira", rota: "/carteira" },
-      { nome: "Rendimentos", rota: "/rendimentos" }
-    ]
-  },
-  {
     grupo: "ADMINISTRAÇÃO",
     icone: "⚙️",
     submenus: [
@@ -60,22 +52,44 @@ const MENUS = [
 ]
 
 function Layout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const location = useLocation()
   const navigate = useNavigate()
 
-  // ==========================================
-  // FUNÇÃO PARA ENCONTRAR O TÍTULO DA PÁGINA
-  // ==========================================
+  // Detectar se é mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+      if (window.innerWidth > 768) {
+        setSidebarOpen(true)
+      } else {
+        setSidebarOpen(false)
+      }
+    }
+
+    // Configurar estado inicial
+    if (window.innerWidth > 768) {
+      setSidebarOpen(true)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Fechar sidebar ao mudar de página (mobile)
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false)
+    }
+  }, [location.pathname])
+
   const getPageTitle = () => {
     const allSubmenus = MENUS.flatMap(grupo => grupo.submenus)
     const current = allSubmenus.find(sub => sub.rota === location.pathname)
     return current ? current.nome : 'Dashboard'
   }
 
-  // ==========================================
-  // FUNÇÃO PARA SAIR (LOGOUT)
-  // ==========================================
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -85,46 +99,89 @@ function Layout({ children }) {
     }
   }
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen)
+  }
+
   return (
     <div style={{ 
       display: 'flex', 
       height: '100vh', 
       backgroundColor: '#0d1b2a',
-      fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
+      fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+      overflow: 'hidden'
     }}>
       {/* ==========================================
-          SIDEBAR - AZUL ESCURO
+          OVERLAY (mobile)
+          ========================================== */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={toggleSidebar}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
+            backdropFilter: 'blur(2px)'
+          }}
+        />
+      )}
+
+      {/* ==========================================
+          SIDEBAR
           ========================================== */}
       <div style={{
-        width: sidebarOpen ? '280px' : '60px',
+        width: isMobile ? '280px' : (sidebarOpen ? '280px' : '60px'),
         backgroundColor: '#0a1628',
         color: '#fff',
-        transition: 'width 0.3s ease',
+        transition: 'width 0.3s ease, transform 0.3s ease',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative',
+        position: isMobile ? 'fixed' : 'relative',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        zIndex: 1000,
+        transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
         flexShrink: 0
       }}>
         {/* LOGO */}
         <div style={{
-          padding: '20px',
+          padding: 'clamp(12px, 2vw, 20px)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          minHeight: '70px'
+          minHeight: 'clamp(50px, 8vh, 70px)'
         }}>
-          <span style={{ fontSize: '28px' }}>💰</span>
+          <span style={{ fontSize: 'clamp(24px, 4vw, 28px)' }}>💰</span>
           {sidebarOpen && (
             <span style={{ 
-              fontSize: '20px', 
+              fontSize: 'clamp(18px, 3vw, 20px)', 
               fontWeight: 'bold',
-              letterSpacing: '0.5px',
               color: '#ffffff'
             }}>
               FinAppGO
             </span>
+          )}
+          {isMobile && sidebarOpen && (
+            <button
+              onClick={toggleSidebar}
+              style={{
+                marginLeft: 'auto',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: '24px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
           )}
         </div>
 
@@ -136,20 +193,29 @@ function Layout({ children }) {
         }}>
           {MENUS.map((grupo, index) => (
             <div key={index} style={{ marginBottom: '5px' }}>
-              {/* Título do grupo */}
-              <div style={{
-                padding: '10px 20px',
-                fontSize: '11px',
-                color: 'rgba(255,255,255,0.4)',
-                textTransform: 'uppercase',
-                letterSpacing: '1.2px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap'
-              }}>
-                {sidebarOpen ? `${grupo.icone} ${grupo.grupo}` : grupo.icone}
-              </div>
+              {sidebarOpen && (
+                <div style={{
+                  padding: '8px 20px',
+                  fontSize: '11px',
+                  color: 'rgba(255,255,255,0.4)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1.2px',
+                  fontWeight: '600'
+                }}>
+                  {grupo.icone} {grupo.grupo}
+                </div>
+              )}
+              {!sidebarOpen && (
+                <div style={{
+                  padding: '8px 20px',
+                  fontSize: '11px',
+                  color: 'rgba(255,255,255,0.4)',
+                  textAlign: 'center'
+                }}>
+                  {grupo.icone}
+                </div>
+              )}
               
-              {/* Submenus */}
               {grupo.submenus.map((sub, subIndex) => {
                 const isActive = location.pathname === sub.rota
                 return (
@@ -158,17 +224,20 @@ function Layout({ children }) {
                     to={sub.rota}
                     style={{
                       display: 'block',
-                      padding: '10px 20px',
+                      padding: sidebarOpen ? '10px 20px' : '10px 12px',
                       color: isActive ? '#ffffff' : 'rgba(255,255,255,0.6)',
                       backgroundColor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
                       textDecoration: 'none',
-                      fontSize: '14px',
+                      fontSize: sidebarOpen ? '14px' : '12px',
                       transition: 'all 0.2s ease',
                       borderLeft: isActive ? '3px solid #3a7abd' : '3px solid transparent',
                       whiteSpace: 'nowrap',
                       cursor: 'pointer',
                       margin: '2px 0',
-                      borderRadius: isActive ? '0 4px 4px 0' : '0'
+                      borderRadius: isActive ? '0 4px 4px 0' : '0',
+                      textAlign: sidebarOpen ? 'left' : 'center',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
                     {sidebarOpen ? sub.nome : sub.nome.charAt(0)}
@@ -179,29 +248,31 @@ function Layout({ children }) {
           ))}
         </div>
 
-        {/* BOTÃO PARA RECOLHER/EXPANDIR SIDEBAR */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            right: '-12px',
-            backgroundColor: '#1a2b4a',
-            color: '#fff',
-            border: '2px solid #0a1628',
-            borderRadius: '50%',
-            width: '24px',
-            height: '24px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            zIndex: 10
-          }}
-        >
-          {sidebarOpen ? '◀' : '▶'}
-        </button>
+        {/* BOTÃO RECOLHER/EXPANDIR (apenas desktop) */}
+        {!isMobile && (
+          <button
+            onClick={toggleSidebar}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              right: '-12px',
+              backgroundColor: '#1a2b4a',
+              color: '#fff',
+              border: '2px solid #0a1628',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              zIndex: 10
+            }}
+          >
+            {sidebarOpen ? '◀' : '▶'}
+          </button>
+        )}
       </div>
 
       {/* ==========================================
@@ -212,23 +283,41 @@ function Layout({ children }) {
         display: 'flex', 
         flexDirection: 'column',
         minWidth: 0,
-        backgroundColor: '#0d1b2a'
+        backgroundColor: '#0d1b2a',
+        overflow: 'hidden'
       }}>
         {/* HEADER SUPERIOR */}
         <header style={{
           backgroundColor: '#1a2b4a',
-          padding: 'clamp(10px, 2vw, 15px) clamp(15px, 3vw, 30px)',
+          padding: 'clamp(8px, 1.5vw, 15px) clamp(12px, 2vw, 30px)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           gap: '10px',
-          flexWrap: 'wrap'
+          flexWrap: 'wrap',
+          minHeight: 'clamp(50px, 8vh, 70px)'
         }}>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Botão Menu Hamburguer (mobile) */}
+            {isMobile && (
+              <button
+                onClick={toggleSidebar}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 'clamp(22px, 4vw, 28px)',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ☰
+              </button>
+            )}
             <h2 style={{ 
-              fontSize: 'clamp(16px, 2.5vw, 20px)', 
+              fontSize: 'clamp(14px, 2.5vw, 20px)', 
               color: '#ffffff',
               fontWeight: '500',
               margin: 0
@@ -239,7 +328,7 @@ function Layout({ children }) {
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 'clamp(10px, 2vw, 20px)',
+            gap: 'clamp(8px, 1.5vw, 20px)',
             flexWrap: 'wrap'
           }}>
             {/* Notificações */}
@@ -267,15 +356,18 @@ function Layout({ children }) {
             {/* Usuário */}
             <span style={{ 
               color: 'rgba(255,255,255,0.8)',
-              fontSize: 'clamp(11px, 1.5vw, 14px)',
+              fontSize: 'clamp(10px, 1.5vw, 14px)',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}>👤</span>
-              <span style={{ display: 'inline', '@media (min-width: 768px)': { display: 'inline' } }}>
-                rafaelbugalho@finappgo.com.br
+              <span style={{ fontSize: 'clamp(14px, 2vw, 18px)' }}>👤</span>
+              <span style={{ 
+                display: isMobile ? 'none' : 'inline',
+                fontSize: 'clamp(10px, 1.2vw, 14px)'
+              }}>
+                {isMobile ? '' : 'rafaelbugalho@finappgo.com.br'}
               </span>
             </span>
             
@@ -286,10 +378,10 @@ function Layout({ children }) {
                 backgroundColor: 'rgba(255,255,255,0.12)',
                 color: '#fff',
                 border: '1px solid rgba(255,255,255,0.15)',
-                padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
+                padding: isMobile ? '6px 12px' : 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: 'clamp(11px, 1.5vw, 13px)',
+                fontSize: isMobile ? '11px' : 'clamp(11px, 1.5vw, 13px)',
                 fontWeight: '500',
                 transition: 'background-color 0.2s, border-color 0.2s',
                 whiteSpace: 'nowrap'
@@ -303,7 +395,7 @@ function Layout({ children }) {
                 e.target.style.borderColor = 'rgba(255,255,255,0.15)'
               }}
             >
-              Sair
+              {isMobile ? '🚪' : 'Sair'}
             </button>
           </div>
         </header>
@@ -311,7 +403,7 @@ function Layout({ children }) {
         {/* ÁREA DE CONTEÚDO */}
         <main style={{
           flex: 1,
-          padding: 'clamp(10px, 3vw, 30px)',
+          padding: isMobile ? 'clamp(8px, 2vw, 15px)' : 'clamp(15px, 3vw, 30px)',
           overflowY: 'auto',
           backgroundColor: '#0d1b2a'
         }}>
