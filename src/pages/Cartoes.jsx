@@ -48,7 +48,8 @@ function Cartoes() {
     { nome: 'Mastercard', emoji: '💳' },
     { nome: 'American Express', emoji: '💳' },
     { nome: 'Elo', emoji: '💳' },
-    { nome: 'Hipercard', emoji: '💳' },
+    { nome: 'Andorinha', emoji: '💳' },
+    { nome: 'Trimais', emoji: '💳' },
     { nome: 'Outro', emoji: '💳' }
   ]
 
