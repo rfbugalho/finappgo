@@ -133,16 +133,13 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
-      <Route path="/relatorios" element={
-        <PrivateRoute>
-          <Layout>
-            <div>
-              <h2 style={{ fontSize: '24px', color: '#ffffff' }}>📊 Relatórios</h2>
-              <p style={{ color: 'rgba(255,255,255,0.5)' }}>Visualize relatórios detalhados</p>
-            </div>
-          </Layout>
-        </PrivateRoute>
-      } />
+<Route path="/relatorios" element={
+  <PrivateRoute>
+    <Layout>
+      <Relatorios />
+    </Layout>
+  </PrivateRoute>
+} />
       
       {/* PATRIMÔNIO */}
       <Route path="/veiculos" element={
