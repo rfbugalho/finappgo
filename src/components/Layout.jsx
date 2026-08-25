@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
+import { useConfig } from '../contexts/ConfigContext'
 
 // ============================================
 // MENUS PERSONALIZÁVEIS
@@ -42,6 +43,14 @@ const MENUS = [
     ]
   },
   {
+    grupo: "INVESTIMENTOS",
+    icone: "📊",
+    submenus: [
+      { nome: "Carteira", rota: "/carteira" },
+      { nome: "Rendimentos", rota: "/rendimentos" }
+    ]
+  },
+  {
     grupo: "ADMINISTRAÇÃO",
     icone: "⚙️",
     submenus: [
@@ -56,6 +65,7 @@ function Layout({ children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const location = useLocation()
   const navigate = useNavigate()
+  const { config } = useConfig()
 
   // Detectar se é mobile
   useEffect(() => {
@@ -69,7 +79,6 @@ function Layout({ children }) {
       }
     }
 
-    // Configurar estado inicial
     if (window.innerWidth > 768) {
       setSidebarOpen(true)
     }
@@ -112,9 +121,10 @@ function Layout({ children }) {
     <div style={{ 
       display: 'flex', 
       height: '100vh', 
-      backgroundColor: '#0d1b2a',
+      backgroundColor: config?.tema === 'light' ? '#f0f2f5' : '#0d1b2a',
       fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      transition: 'background-color 0.3s ease'
     }}>
       {/* ==========================================
           OVERLAY (mobile)
@@ -141,8 +151,8 @@ function Layout({ children }) {
           ========================================== */}
       <div style={{
         width: isMobile ? '280px' : (sidebarOpen ? '280px' : '60px'),
-        backgroundColor: '#0a1628',
-        color: '#fff',
+        backgroundColor: config?.tema === 'light' ? '#ffffff' : '#0a1628',
+        color: config?.tema === 'light' ? '#1a202c' : '#fff',
         transition: isMobile ? 'transform 0.3s ease' : 'width 0.3s ease',
         overflow: 'hidden',
         display: 'flex',
@@ -154,12 +164,12 @@ function Layout({ children }) {
         zIndex: 1000,
         transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
         flexShrink: 0,
-        boxShadow: isMobile && sidebarOpen ? '4px 0 20px rgba(0,0,0,0.5)' : 'none'
+        boxShadow: isMobile && sidebarOpen ? '4px 0 20px rgba(0,0,0,0.5)' : config?.tema === 'light' ? '2px 0 10px rgba(0,0,0,0.05)' : 'none'
       }}>
         {/* LOGO */}
         <div style={{
           padding: 'clamp(12px, 2vw, 20px)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: `1px solid ${config?.tema === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: sidebarOpen ? 'space-between' : 'center',
@@ -171,7 +181,7 @@ function Layout({ children }) {
               <span style={{ 
                 fontSize: 'clamp(18px, 3vw, 20px)', 
                 fontWeight: 'bold',
-                color: '#ffffff'
+                color: config?.tema === 'light' ? '#1a202c' : '#ffffff'
               }}>
                 FinAppGO
               </span>
@@ -183,7 +193,7 @@ function Layout({ children }) {
               style={{
                 backgroundColor: 'transparent',
                 border: 'none',
-                color: 'rgba(255,255,255,0.6)',
+                color: config?.tema === 'light' ? '#1a202c' : 'rgba(255,255,255,0.6)',
                 fontSize: '24px',
                 cursor: 'pointer',
                 padding: '4px 8px'
@@ -206,7 +216,7 @@ function Layout({ children }) {
                 <div style={{
                   padding: '8px 20px',
                   fontSize: '11px',
-                  color: 'rgba(255,255,255,0.4)',
+                  color: config?.tema === 'light' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
                   textTransform: 'uppercase',
                   letterSpacing: '1.2px',
                   fontWeight: '600'
@@ -218,7 +228,7 @@ function Layout({ children }) {
                 <div style={{
                   padding: '8px 20px',
                   fontSize: '11px',
-                  color: 'rgba(255,255,255,0.4)',
+                  color: config?.tema === 'light' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
                   textAlign: 'center'
                 }}>
                   {grupo.icone}
@@ -237,8 +247,12 @@ function Layout({ children }) {
                     style={{
                       display: 'block',
                       padding: sidebarOpen ? '10px 20px' : '10px 12px',
-                      color: isActive ? '#ffffff' : 'rgba(255,255,255,0.6)',
-                      backgroundColor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: isActive 
+                        ? (config?.tema === 'light' ? '#1a202c' : '#ffffff') 
+                        : (config?.tema === 'light' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)'),
+                      backgroundColor: isActive 
+                        ? (config?.tema === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)') 
+                        : 'transparent',
                       textDecoration: 'none',
                       fontSize: sidebarOpen ? '14px' : '12px',
                       transition: 'all 0.2s ease',
@@ -268,9 +282,9 @@ function Layout({ children }) {
               position: 'absolute',
               bottom: '20px',
               right: '-12px',
-              backgroundColor: '#1a2b4a',
-              color: '#fff',
-              border: '2px solid #0a1628',
+              backgroundColor: config?.tema === 'light' ? '#e2e8f0' : '#1a2b4a',
+              color: config?.tema === 'light' ? '#1a202c' : '#fff',
+              border: `2px solid ${config?.tema === 'light' ? '#ffffff' : '#0a1628'}`,
               borderRadius: '50%',
               width: '24px',
               height: '24px',
@@ -295,19 +309,20 @@ function Layout({ children }) {
         display: 'flex', 
         flexDirection: 'column',
         minWidth: 0,
-        backgroundColor: '#0d1b2a',
+        backgroundColor: config?.tema === 'light' ? '#f0f2f5' : '#0d1b2a',
         overflow: 'hidden',
-        height: '100vh'
+        height: '100vh',
+        transition: 'background-color 0.3s ease'
       }}>
         {/* HEADER */}
         <header style={{
-          backgroundColor: '#1a2b4a',
+          backgroundColor: config?.tema === 'light' ? '#ffffff' : '#1a2b4a',
           padding: 'clamp(8px, 1.5vw, 15px) clamp(12px, 2vw, 30px)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          borderBottom: `1px solid ${config?.tema === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)'}`,
           gap: '10px',
           flexWrap: 'wrap',
           minHeight: 'clamp(50px, 8vh, 70px)',
@@ -320,7 +335,7 @@ function Layout({ children }) {
                 style={{
                   backgroundColor: 'transparent',
                   border: 'none',
-                  color: '#fff',
+                  color: config?.tema === 'light' ? '#1a202c' : '#fff',
                   fontSize: 'clamp(24px, 4vw, 30px)',
                   cursor: 'pointer',
                   padding: '4px',
@@ -334,7 +349,7 @@ function Layout({ children }) {
             )}
             <h2 style={{ 
               fontSize: 'clamp(14px, 2.5vw, 20px)', 
-              color: '#ffffff',
+              color: config?.tema === 'light' ? '#1a202c' : '#ffffff',
               fontWeight: '500',
               margin: 0
             }}>
@@ -369,7 +384,7 @@ function Layout({ children }) {
             </span>
             
             <span style={{ 
-              color: 'rgba(255,255,255,0.8)',
+              color: config?.tema === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)',
               fontSize: 'clamp(10px, 1.5vw, 14px)',
               display: 'flex',
               alignItems: 'center',
@@ -388,9 +403,9 @@ function Layout({ children }) {
             <button
               onClick={handleLogout}
               style={{
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.15)',
+                backgroundColor: config?.tema === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
+                color: config?.tema === 'light' ? '#1a202c' : '#fff',
+                border: `1px solid ${config?.tema === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
                 padding: isMobile ? '6px 12px' : 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -400,12 +415,10 @@ function Layout({ children }) {
                 whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(255,255,255,0.2)'
-                e.target.style.borderColor = 'rgba(255,255,255,0.3)'
+                e.target.style.backgroundColor = config?.tema === 'light' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'rgba(255,255,255,0.12)'
-                e.target.style.borderColor = 'rgba(255,255,255,0.15)'
+                e.target.style.backgroundColor = config?.tema === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)'
               }}
             >
               {isMobile ? '🚪' : 'Sair'}
@@ -413,19 +426,18 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* ==========================================
-            CONTEÚDO - CORRIGIDO O SCROLL
-            ========================================== */}
+        {/* CONTEÚDO */}
         <main style={{
           flex: 1,
           padding: isMobile ? 'clamp(8px, 2vw, 15px)' : 'clamp(15px, 3vw, 30px)',
           overflowY: 'auto',
           overflowX: 'hidden',
-          backgroundColor: '#0d1b2a',
+          backgroundColor: config?.tema === 'light' ? '#f0f2f5' : '#0d1b2a',
           minHeight: 0,
           height: '100%',
           maxHeight: '100%',
-          position: 'relative'
+          position: 'relative',
+          transition: 'background-color 0.3s ease'
         }}>
           <div style={{
             minHeight: '100%',

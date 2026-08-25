@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ConfigProvider } from './contexts/ConfigContext'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Lancamentos from './pages/Lancamentos'
@@ -11,8 +12,9 @@ import Metas from './pages/Metas'
 import Veiculos from './pages/Veiculos'
 import Residencias from './pages/Residencias'
 import Recorrencias from './pages/Recorrencias'
-import Usuarios from './pages/Usuarios'
 import Relatorios from './pages/Relatorios'
+import Usuarios from './pages/Usuarios'
+import Configuracoes from './pages/Configuracoes'
 import Login from './pages/Login'
 
 // ==========================================
@@ -93,14 +95,6 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
-      <Route path="/recorrencias" element={
-  <PrivateRoute>
-    <Layout>
-      <Recorrencias />
-    </Layout>
-  </PrivateRoute>
-} />
-
       <Route path="/categorias" element={
         <PrivateRoute>
           <Layout>
@@ -125,21 +119,21 @@ function AppRoutes() {
         </PrivateRoute>
       } />
       
-      <Route path="/metas" element={
+      <Route path="/recorrencias" element={
         <PrivateRoute>
           <Layout>
-            <Metas />
+            <Recorrencias />
           </Layout>
         </PrivateRoute>
       } />
       
-<Route path="/relatorios" element={
-  <PrivateRoute>
-    <Layout>
-      <Relatorios />
-    </Layout>
-  </PrivateRoute>
-} />
+      <Route path="/relatorios" element={
+        <PrivateRoute>
+          <Layout>
+            <Relatorios />
+          </Layout>
+        </PrivateRoute>
+      } />
       
       {/* PATRIMÔNIO */}
       <Route path="/veiculos" element={
@@ -149,16 +143,42 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
-
-      <Route path="/residencias" element={
-  <PrivateRoute>
-    <Layout>
-      <Residencias />
-    </Layout>
-  </PrivateRoute>
-} />
       
-      {/* INVESTIMENTOS */}
+      <Route path="/residencias" element={
+        <PrivateRoute>
+          <Layout>
+            <Residencias />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
+      {/* OBJETIVOS */}
+      <Route path="/metas" element={
+        <PrivateRoute>
+          <Layout>
+            <Metas />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
+      {/* ADMINISTRAÇÃO */}
+      <Route path="/usuarios" element={
+        <PrivateRoute>
+          <Layout>
+            <Usuarios />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
+      <Route path="/configuracoes" element={
+        <PrivateRoute>
+          <Layout>
+            <Configuracoes />
+          </Layout>
+        </PrivateRoute>
+      } />
+      
+      {/* INVESTIMENTOS (placeholder) */}
       <Route path="/carteira" element={
         <PrivateRoute>
           <Layout>
@@ -180,29 +200,6 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
-      
-      {/* ADMINISTRAÇÃO */}
-      <Route path="/usuarios" element={
-        <PrivateRoute>
-          <Layout>
-            <div>
-              <h2 style={{ fontSize: '24px', color: '#ffffff' }}>👥 Usuários</h2>
-              <p style={{ color: 'rgba(255,255,255,0.5)' }}>Gerencie os usuários do sistema</p>
-            </div>
-          </Layout>
-        </PrivateRoute>
-      } />
-      
-      <Route path="/configuracoes" element={
-        <PrivateRoute>
-          <Layout>
-            <div>
-              <h2 style={{ fontSize: '24px', color: '#ffffff' }}>⚙️ Configurações</h2>
-              <p style={{ color: 'rgba(255,255,255,0.5)' }}>Configure o sistema</p>
-            </div>
-          </Layout>
-        </PrivateRoute>
-      } />
     </Routes>
   )
 }
@@ -214,7 +211,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <ConfigProvider>
+          <AppRoutes />
+        </ConfigProvider>
       </AuthProvider>
     </Router>
   )
