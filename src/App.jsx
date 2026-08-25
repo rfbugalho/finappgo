@@ -12,6 +12,7 @@ import Veiculos from './pages/Veiculos'
 import Residencias from './pages/Residencias'
 import Recorrencias from './pages/Recorrencias'
 import Usuarios from './pages/Usuarios'
+import Relatorios from './pages/Relatorios'
 import Login from './pages/Login'
 
 // ==========================================
