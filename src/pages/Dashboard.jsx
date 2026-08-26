@@ -211,8 +211,10 @@ function Dashboard() {
       setCategoriaMaisCara(maisCara)
     }
 
-    // 2. Ranking de Categorias (Top 5)
-    const ranking = [...dadosCategorias].sort((a, b) => b.valor - a.valor).slice(0, 5)
+    // 2. Ranking de Categorias (Top 5 por valor de gastos)
+    const ranking = [...dadosCategorias]
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5)
     setRankingCategorias(ranking)
 
     // 3. Ticket Médio
@@ -248,7 +250,7 @@ function Dashboard() {
     const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
 
-    // 6. Top 5 Despesas do período
+    // 6. TOP 5 Despesas (MAIORES valores)
     const top5 = despesasFiltradas
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
@@ -817,7 +819,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          RANKING DE CATEGORIAS
+          RANKING DE CATEGORIAS - CORRIGIDO
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -839,7 +841,16 @@ function Dashboard() {
         {carregando ? (
           <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
         ) : rankingCategorias.length === 0 ? (
-          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Nenhuma categoria com gastos</p>
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)' }}>
+              Nenhuma categoria com gastos no período selecionado
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px' }}>
+              {lancamentosFiltrados.length === 0 
+                ? 'Tente selecionar outro mês ou ano' 
+                : 'Suas despesas não estão categorizadas'}
+            </p>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {rankingCategorias.map((item, index) => {
@@ -892,7 +903,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          TOP 5 DESPESAS DO MÊS
+          TOP 5 DESPESAS - CORRIGIDO (MAIORES VALORES)
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -909,14 +920,21 @@ function Dashboard() {
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
-          🔥 Top 5 Despesas do Período
+          🔥 Top 5 Despesas do Período (Maiores Valores)
         </h3>
         {carregando ? (
           <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
         ) : top5Despesas.length === 0 ? (
-          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
-            Nenhuma despesa no período selecionado
-          </p>
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)' }}>
+              Nenhuma despesa no período selecionado
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px' }}>
+              {lancamentosFiltrados.length === 0 
+                ? 'Tente selecionar outro mês ou ano' 
+                : 'Suas despesas não foram registradas neste período'}
+            </p>
+          </div>
         ) : (
           <div style={{
             display: 'grid',
@@ -938,7 +956,7 @@ function Dashboard() {
                     {index + 1}. {item.descricao}
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginLeft: '10px' }}>
-                    {item.categoria}
+                    {item.categoria || 'Sem categoria'}
                   </span>
                   {item.statusPagamento === 'pago' && (
                     <span style={{
