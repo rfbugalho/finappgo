@@ -3,7 +3,6 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
-  deleteDoc, 
   doc, 
   getDocs, 
   query, 
@@ -22,6 +21,7 @@ export const buscarConfiguracoes = async () => {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
+    // Buscar por userId
     const q = query(
       collection(db, COLLECTION_NAME), 
       where('userId', '==', user.uid)
@@ -29,7 +29,7 @@ export const buscarConfiguracoes = async () => {
     const querySnapshot = await getDocs(q)
     
     if (querySnapshot.empty) {
-      // Criar configurações padrão
+      // Se não encontrar, criar configurações padrão
       return await criarConfiguracoesPadrao()
     }
 

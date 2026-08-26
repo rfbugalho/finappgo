@@ -83,11 +83,14 @@ function Dashboard() {
   // ==========================================
   // ESTADOS DOS INDICADORES AVANÇADOS
   // ==========================================
+  const [gastosPorMes, setGastosPorMes] = useState([])
+  const [receitasPorMes, setReceitasPorMes] = useState([])
   const [categoriaMaisCara, setCategoriaMaisCara] = useState(null)
   const [ticketMedio, setTicketMedio] = useState(0)
   const [previsaoGastos, setPrevisaoGastos] = useState(0)
   const [velocidadeGastos, setVelocidadeGastos] = useState(0)
   const [top5Despesas, setTop5Despesas] = useState([])
+  const [rankingCategorias, setRankingCategorias] = useState([])
 
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
@@ -122,7 +125,6 @@ function Dashboard() {
   const aplicarFiltros = () => {
     let dados = [...lancamentos]
 
-    // Filtro por período (mês/ano)
     const mesStr = String(filtros.mes).padStart(2, '0')
     const anoStr = String(filtros.ano)
     dados = dados.filter(item => {
@@ -131,7 +133,6 @@ function Dashboard() {
       return partes[0] === anoStr && partes[1] === mesStr
     })
 
-    // Filtro por tipo
     if (filtros.tipo !== 'todos') {
       dados = dados.filter(item => item.tipo === filtros.tipo)
     }
@@ -198,7 +199,29 @@ function Dashboard() {
     // INDICADORES AVANÇADOS
     // ==========================================
 
-    // Categoria Mais Cara
+    // 1. Gastos por Mês (últimos 6 meses)
+    const mesesLabels = []
+    const gastosMeses = []
+    const receitasMeses = []
+    for (let i = 5; i >= 0; i--) {
+      const data = new Date(anoAtual, mesAtual - i, 1)
+      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+      mesesLabels.push(data.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }))
+      
+      const gastosMes = lancamentos
+        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      gastosMeses.push(gastosMes)
+      
+      const receitasMes = lancamentos
+        .filter(item => item.tipo === 'receita' && item.data.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      receitasMeses.push(receitasMes)
+    }
+    setGastosPorMes(gastosMeses)
+    setReceitasPorMes(receitasMeses)
+
+    // 2. Categoria Mais Cara
     if (dadosCategorias.length > 0) {
       const maisCara = dadosCategorias.reduce((max, cat) => 
         cat.valor > max.valor ? cat : max
@@ -206,18 +229,20 @@ function Dashboard() {
       setCategoriaMaisCara(maisCara)
     }
 
-    // Ticket Médio
+    // 3. Ranking de Categorias (Top 5)
+    const ranking = [...dadosCategorias].sort((a, b) => b.valor - a.valor).slice(0, 5)
+    setRankingCategorias(ranking)
+
+    // 4. Ticket Médio
     const totalDespesasMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     const qtdDespesas = despesasFiltradas.length
     setTicketMedio(qtdDespesas > 0 ? totalDespesasMes / qtdDespesas : 0)
 
-    // Previsão de Gastos (média dos últimos 3 meses do período)
-    const mesAtualFiltro = filtros.mes
-    const anoAtualFiltro = filtros.ano
+    // 5. Previsão de Gastos (média dos últimos 3 meses)
     const ultimos3Meses = []
     for (let i = 1; i <= 3; i++) {
-      let mes = mesAtualFiltro - i
-      let ano = anoAtualFiltro
+      let mes = filtros.mes - i
+      let ano = filtros.ano
       if (mes <= 0) {
         mes += 12
         ano -= 1
@@ -236,28 +261,18 @@ function Dashboard() {
     const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.filter(m => m > 0).length || 0
     setPrevisaoGastos(media3Meses * 1.1)
 
-    // Top 5 Despesas do período
-    const mesStrTop = String(filtros.mes).padStart(2, '0')
-    const anoStrTop = String(filtros.ano)
-    const despesasTop = lancamentos
-      .filter(item => {
-        if (!item.data) return false
-        const partes = item.data.split('-')
-        return item.tipo === 'despesa' && partes[0] === anoStrTop && partes[1] === mesStrTop
-      })
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 5)
-    setTop5Despesas(despesasTop)
-
-    // Velocidade de Gastos (média por dia no mês)
+    // 6. Velocidade de Gastos
     const diasNoMes = new Date(filtros.ano, filtros.mes, 0).getDate()
     const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
+
+    // 7. Top 5 Despesas do período
+    const top5 = despesasFiltradas
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5)
+    setTop5Despesas(top5)
   }
 
-  // ==========================================
-  // EFECTS
-  // ==========================================
   useEffect(() => {
     carregarDados()
   }, [])
@@ -471,45 +486,6 @@ function Dashboard() {
             {carregando ? '...' : `${economiaPercentual.toFixed(1)}%`}
           </p>
         </div>
-      </div>
-
-      {/* ==========================================
-          CARDS SUPERIORES
-          ========================================== */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '12px',
-        marginBottom: '20px'
-      }}>
-        <Card 
-          titulo="SCORE GERAL" 
-          valor={carregando ? '...' : `${economiaPercentual.toFixed(2)}%`}
-          subtitulo="▲ +0.00 pp vs. ant."
-          cor="#2d8a4e"
-          icone="📊"
-        />
-        <Card 
-          titulo="SALDO TOTAL" 
-          valor={carregando ? '...' : formatarMoeda(saldo)}
-          subtitulo={`${lancamentosFiltrados.length} movimentações`}
-          cor="#3a7abd"
-          icone="💰"
-        />
-        <Card 
-          titulo="CONTAS ATIVAS" 
-          valor={carregando ? '...' : contas.filter(c => c.status === 'ativo').length}
-          subtitulo={`${contas.filter(c => c.status === 'inativo').length} inativas`}
-          cor="#9f7aea"
-          icone="🏦"
-        />
-        <Card 
-          titulo="DESPESAS PENDENTES" 
-          valor={carregando ? '...' : formatarMoeda(valorTotalVencido + valorTotalHoje)}
-          subtitulo={`${despesasVencidas.length} vencidas · ${despesasHoje.length} hoje`}
-          cor={valorTotalVencido > 0 ? '#d94a4a' : '#ed8936'}
-          icone="⏰"
-        />
       </div>
 
       {/* ==========================================
@@ -756,7 +732,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          METAS FINANCEIRAS
+          RANKING DE CATEGORIAS
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -773,77 +749,61 @@ function Dashboard() {
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
-          🎯 Metas Financeiras
+          🏆 Ranking de Categorias
         </h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '10px'
-        }}>
-          {carregando ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
-              Carregando metas...
-            </p>
-          ) : metas.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
-              Nenhuma meta cadastrada
-            </p>
-          ) : (
-            metas.slice(0, 4).map(meta => {
-              const progresso = meta.progresso || 0
-              const statusText = getStatusText(meta.status)
+        {carregando ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
+        ) : rankingCategorias.length === 0 ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Nenhuma categoria com gastos</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {rankingCategorias.map((item, index) => {
+              const cores = ['#fc8181', '#f6ad55', '#63b3ed', '#b794f4', '#68d391']
+              const maxValor = rankingCategorias[0]?.valor || 1
+              const percentual = (item.valor / maxValor) * 100
               
               return (
-                <div key={meta.id} style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  borderLeft: `4px solid ${meta.cor || '#4299e1'}`
+                <div key={index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
                 }}>
-                  <p style={{ 
-                    color: '#fff', 
-                    fontSize: 'clamp(11px, 1.5vw, 13px)', 
-                    fontWeight: '500',
-                    margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                  <span style={{ 
+                    color: 'rgba(255,255,255,0.3)', 
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    minWidth: '24px'
                   }}>
-                    {meta.nome}
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
-                      {progresso.toFixed(0)}%
-                    </span>
-                    <span style={{ 
-                      color: meta.status === 'concluida' ? '#48bb78' : meta.status === 'atrasada' ? '#fc8181' : '#4299e1',
-                      fontSize: '9px',
-                      fontWeight: '500'
-                    }}>
-                      {statusText}
-                    </span>
-                  </div>
-                  <div style={{
-                    width: '100%',
-                    height: '4px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    borderRadius: '2px',
-                    marginTop: '6px',
-                    overflow: 'hidden'
-                  }}>
+                    {index + 1}º
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span style={{ color: '#fff', fontSize: '13px' }}>{item.nome}</span>
+                      <span style={{ color: cores[index], fontSize: '13px', fontWeight: '600' }}>
+                        {formatarMoeda(item.valor)}
+                      </span>
+                    </div>
                     <div style={{
-                      width: `${Math.min(progresso, 100)}%`,
-                      height: '100%',
-                      backgroundColor: meta.cor || '#4299e1',
-                      borderRadius: '2px',
-                      transition: 'width 0.5s ease'
-                    }} />
+                      width: '100%',
+                      height: '6px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${percentual}%`,
+                        height: '100%',
+                        backgroundColor: cores[index],
+                        borderRadius: '3px',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
                   </div>
                 </div>
               )
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
       {/* ==========================================

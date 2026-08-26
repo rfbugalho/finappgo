@@ -15,15 +15,19 @@ export function ConfigProvider({ children }) {
 
   const carregarConfiguracoes = async () => {
     setCarregando(true)
-    const dados = await buscarConfiguracoes()
-    if (dados) {
-      setConfig({
-        tema: dados.tema || 'dark',
-        moeda: dados.moeda || 'R$',
-        formatoData: dados.formatoData || 'DD/MM/YYYY',
-        notificacoes: dados.notificacoes !== undefined ? dados.notificacoes : true
-      })
-      setConfigId(dados.id)
+    try {
+      const dados = await buscarConfiguracoes()
+      if (dados) {
+        setConfig({
+          tema: dados.tema || 'dark',
+          moeda: dados.moeda || 'R$',
+          formatoData: dados.formatoData || 'DD/MM/YYYY',
+          notificacoes: dados.notificacoes !== undefined ? dados.notificacoes : true
+        })
+        setConfigId(dados.id)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error)
     }
     setCarregando(false)
   }
@@ -43,28 +47,12 @@ export function ConfigProvider({ children }) {
     }
   }
 
-  const formatarMoeda = (valor) => {
-    const moeda = config.moeda || 'R$'
-    return `${moeda} ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    if (config.formatoData === 'MM/DD/YYYY') {
-      return `${partes[2]}/${partes[1]}/${partes[0]}`
-    }
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
   return (
     <ConfigContext.Provider value={{
       config,
       configId,
       carregando,
       atualizarConfig,
-      formatarMoeda,
-      formatarData,
       recarregar: carregarConfiguracoes
     }}>
       {children}
