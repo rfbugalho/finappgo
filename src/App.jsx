@@ -120,12 +120,12 @@ function AppRoutes() {
       } />
       
       <Route path="/recorrencias" element={
-        <PrivateRoute>
-          <Layout>
-            <Recorrencias />
-          </Layout>
-        </PrivateRoute>
-      } />
+  <PrivateRoute>
+    <Layout>
+      <Recorrencias />
+    </Layout>
+  </PrivateRoute>
+} />
       
       <Route path="/relatorios" element={
         <PrivateRoute>

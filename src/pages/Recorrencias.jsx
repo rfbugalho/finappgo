@@ -9,6 +9,7 @@ import {
 } from '../firebase/recorrenciasService'
 import { buscarCategorias } from '../firebase/categoriasService'
 import { buscarContasAtivas } from '../firebase/contasService'
+import { formatarMoeda, formatarData } from '../utils/formatters'
 
 function Recorrencias() {
   const [recorrencias, setRecorrencias] = useState([])
@@ -179,16 +180,6 @@ function Recorrencias() {
   // ==========================================
   // FORMATADORES
   // ==========================================
-  const formatarMoeda = (valor) => {
-    return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
   const getPeriodicidadeLabel = (periodicidade) => {
     const labels = {
       mensal: '📅 Mensal',
@@ -197,6 +188,10 @@ function Recorrencias() {
     }
     return labels[periodicidade] || periodicidade
   }
+
+  const categoriasFiltradas = categorias.filter(cat => cat.tipo === 'despesa')
+  const categoriaSelecionada = categorias.find(cat => cat.nome === formData.categoria)
+  const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
 
   // ==========================================
   // RENDER
@@ -577,7 +572,7 @@ function Recorrencias() {
                     required
                   >
                     <option value="">Selecione uma categoria</option>
-                    {categorias.filter(c => c.tipo === 'despesa').map(cat => (
+                    {categoriasFiltradas.map(cat => (
                       <option key={cat.id} value={cat.nome} style={{ backgroundColor: '#1a2b4a' }}>
                         {cat.nome}
                       </option>
@@ -586,39 +581,32 @@ function Recorrencias() {
                 )}
               </div>
 
-              {/* Subcategoria */}
-              {formData.categoria && (
-                (() => {
-                  const cat = categorias.find(c => c.nome === formData.categoria)
-                  const subcategorias = cat?.subcategorias || []
-                  return subcategorias.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
-                        🔹 Subcategoria
-                      </label>
-                      <select
-                        value={formData.subcategoria}
-                        onChange={(e) => setFormData({ ...formData, subcategoria: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          fontSize: '14px',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '8px',
-                          backgroundColor: 'rgba(255,255,255,0.05)',
-                          color: '#ffffff'
-                        }}
-                      >
-                        <option value="">Selecione uma subcategoria</option>
-                        {subcategorias.map((sub, idx) => (
-                          <option key={idx} value={sub} style={{ backgroundColor: '#1a2b4a' }}>
-                            {sub}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )
-                })()
+              {formData.categoria && subcategoriasDisponiveis.length > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
+                    🔹 Subcategoria
+                  </label>
+                  <select
+                    value={formData.subcategoria}
+                    onChange={(e) => setFormData({ ...formData, subcategoria: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    <option value="">Selecione uma subcategoria</option>
+                    {subcategoriasDisponiveis.map((sub, idx) => (
+                      <option key={idx} value={sub} style={{ backgroundColor: '#1a2b4a' }}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               <div style={{ marginBottom: '12px' }}>

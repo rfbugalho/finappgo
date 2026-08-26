@@ -62,8 +62,6 @@ export const adicionarRecorrencia = async (recorrencia) => {
       criadoEm: new Date().toISOString()
     })
 
-    await gerarLancamentoRecorrente(docRef.id)
-
     return { id: docRef.id, ...recorrencia }
   } catch (error) {
     console.error('Erro ao adicionar recorrência:', error)
@@ -126,7 +124,8 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
       valor: recorrencia.valor,
       contaId: recorrencia.contaId || '',
       recorrenciaId: recorrenciaId,
-      geradoAutomaticamente: true
+      geradoAutomaticamente: true,
+      statusPagamento: 'pendente'
     }
 
     const resultado = await adicionarLancamento(lancamento)
