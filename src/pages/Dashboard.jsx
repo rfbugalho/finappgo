@@ -7,8 +7,9 @@ import { buscarLancamentos } from '../firebase/lancamentosService'
 import { buscarContas } from '../firebase/contasService'
 import { buscarCartoes } from '../firebase/cartoesService'
 import { buscarMetas } from '../firebase/metasService'
+import { buscarRecorrencias } from '../firebase/recorrenciasService'
 import { gerarNotificacoesAutomaticas } from '../firebase/notificacoesService'
-import { formatarMoeda } from '../utils/formatters'
+import { formatarMoeda, formatarData } from '../utils/formatters'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -54,6 +55,7 @@ function Dashboard() {
   const [contas, setContas] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [metas, setMetas] = useState([])
+  const [recorrencias, setRecorrencias] = useState([])
   const [carregando, setCarregando] = useState(true)
 
   // ==========================================
@@ -110,11 +112,13 @@ function Dashboard() {
     const dadosContas = await buscarContas()
     const dadosCartoes = await buscarCartoes()
     const dadosMetas = await buscarMetas()
+    const dadosRecorrencias = await buscarRecorrencias()
     
     setLancamentos(dadosLancamentos)
     setContas(dadosContas)
     setCartoes(dadosCartoes)
     setMetas(dadosMetas)
+    setRecorrencias(dadosRecorrencias)
     
     setCarregando(false)
   }
@@ -181,29 +185,21 @@ function Dashboard() {
     )
     setDespesasProximosDias(proximosDias)
 
-    // ==========================================
-    // CATEGORIAS - CORRIGIDO
-    // ==========================================
+    // Categorias
     const catMap = {}
     despesasFiltradas.forEach(item => {
       const cat = item.categoria || 'Sem categoria'
       if (!catMap[cat]) catMap[cat] = 0
       catMap[cat] += item.valor
     })
-    
     const categoriasArray = Object.entries(catMap).map(([nome, valor]) => ({ 
       nome, 
       valor: parseFloat(valor.toFixed(2))
     }))
-    
-    // Ordenar por valor (maior para menor)
     categoriasArray.sort((a, b) => b.valor - a.valor)
-    
     setDadosCategorias(categoriasArray)
 
-    // ==========================================
-    // SUBCATEGORIAS
-    // ==========================================
+    // Subcategorias
     const subMap = {}
     despesasFiltradas.forEach(item => {
       const sub = item.subcategoria || 'Sem subcategoria'
@@ -218,7 +214,7 @@ function Dashboard() {
 
     // 1. Categoria Mais Cara
     if (categoriasArray.length > 0) {
-      const maisCara = categoriasArray[0] // Já está ordenado
+      const maisCara = categoriasArray[0]
       setCategoriaMaisCara(maisCara)
     } else {
       setCategoriaMaisCara(null)
@@ -261,7 +257,7 @@ function Dashboard() {
     const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
 
-    // 6. Top 5 Despesas do período (MAIORES VALORES)
+    // 6. Top 5 Despesas do período
     const top5 = despesasFiltradas
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
@@ -289,14 +285,14 @@ function Dashboard() {
     const gerarNotificacoes = async () => {
       if (!carregando && lancamentos.length > 0) {
         try {
-          await gerarNotificacoesAutomaticas(lancamentos, cartoes, metas, [])
+          await gerarNotificacoesAutomaticas(lancamentos, cartoes, metas, recorrencias)
         } catch (error) {
           console.error('Erro ao gerar notificações:', error)
         }
       }
     }
     gerarNotificacoes()
-  }, [lancamentos, cartoes, metas, carregando])
+  }, [lancamentos, cartoes, metas, recorrencias, carregando])
 
   // ==========================================
   // FUNÇÕES DOS FILTROS
@@ -834,7 +830,70 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          RANKING DE CATEGORIAS - CORRIGIDO
+          RECORRÊNCIAS ATIVAS (NOVO)
+          ========================================== */}
+      <div style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ 
+          fontSize: 'clamp(12px, 2vw, 14px)', 
+          color: 'rgba(255,255,255,0.6)',
+          fontWeight: '600',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          🔄 Recorrências Ativas
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: '10px'
+        }}>
+          {carregando ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Carregando recorrências...
+            </p>
+          ) : recorrencias.filter(r => r.status === 'ativo').length === 0 ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+              Nenhuma recorrência ativa
+            </p>
+          ) : (
+            recorrencias.filter(r => r.status === 'ativo').slice(0, 6).map(recorrencia => (
+              <div key={recorrencia.id} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                borderLeft: '3px solid #3a7abd'
+              }}>
+                <p style={{ color: '#fff', fontSize: '13px', fontWeight: '500', margin: 0 }}>
+                  {recorrencia.nome}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>
+                    {formatarMoeda(recorrencia.valor)}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>
+                    {recorrencia.periodicidade}
+                  </span>
+                </div>
+                {recorrencia.dataTermino && (
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', marginTop: '2px' }}>
+                    até {formatarData(recorrencia.dataTermino)}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ==========================================
+          RANKING DE CATEGORIAS
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -918,7 +977,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          TOP 5 DESPESAS DO PERÍODO (MAIORES VALORES)
+          TOP 5 DESPESAS DO PERÍODO
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',

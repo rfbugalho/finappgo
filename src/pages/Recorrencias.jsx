@@ -34,6 +34,7 @@ function Recorrencias() {
     periodicidade: 'mensal',
     diaVencimento: '1',
     dataInicio: new Date().toISOString().split('T')[0],
+    dataTermino: '',
     descricao: ''
   })
 
@@ -81,6 +82,7 @@ function Recorrencias() {
       periodicidade: 'mensal',
       diaVencimento: '1',
       dataInicio: new Date().toISOString().split('T')[0],
+      dataTermino: '',
       descricao: ''
     })
     setModalEdicao(false)
@@ -98,6 +100,7 @@ function Recorrencias() {
       periodicidade: recorrencia.periodicidade,
       diaVencimento: recorrencia.diaVencimento || '1',
       dataInicio: recorrencia.dataInicio,
+      dataTermino: recorrencia.dataTermino || '',
       descricao: recorrencia.descricao || ''
     })
     setModalEdicao(true)
@@ -136,6 +139,7 @@ function Recorrencias() {
       periodicidade: formData.periodicidade,
       diaVencimento: formData.diaVencimento,
       dataInicio: formData.dataInicio,
+      dataTermino: formData.dataTermino || '',
       descricao: formData.descricao || ''
     }
 
@@ -187,6 +191,24 @@ function Recorrencias() {
       anual: '📅 Anual'
     }
     return labels[periodicidade] || periodicidade
+  }
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      ativo: '✅ Ativo',
+      concluida: '📌 Concluída',
+      inativo: '❌ Inativo'
+    }
+    return labels[status] || status
+  }
+
+  const getStatusCor = (status) => {
+    const cores = {
+      ativo: '#2d8a4e',
+      concluida: '#3a7abd',
+      inativo: '#d94a4a'
+    }
+    return cores[status] || '#ed8936'
   }
 
   const categoriasFiltradas = categorias.filter(cat => cat.tipo === 'despesa')
@@ -282,8 +304,9 @@ function Recorrencias() {
               backgroundColor: 'rgba(255,255,255,0.05)',
               borderRadius: '16px',
               padding: '20px',
-              border: `1px solid ${recorrencia.status === 'ativo' ? 'rgba(45,138,78,0.2)' : 'rgba(217,74,74,0.2)'}`,
-              transition: 'transform 0.2s'
+              border: `1px solid ${getStatusCor(recorrencia.status)}33`,
+              transition: 'transform 0.2s',
+              opacity: recorrencia.status === 'concluida' ? 0.7 : 1
             }}
             onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
             onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
@@ -301,19 +324,22 @@ function Recorrencias() {
                       {recorrencia.subcategoria}
                     </p>
                   )}
+                  {recorrencia.dataTermino && (
+                    <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', margin: '2px 0 0 0' }}>
+                      até {formatarData(recorrencia.dataTermino)}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <span style={{
-                    backgroundColor: recorrencia.status === 'ativo' 
-                      ? 'rgba(45,138,78,0.2)' 
-                      : 'rgba(217,74,74,0.2)',
-                    color: recorrencia.status === 'ativo' ? '#2d8a4e' : '#d94a4a',
+                    backgroundColor: `${getStatusCor(recorrencia.status)}22`,
+                    color: getStatusCor(recorrencia.status),
                     padding: '2px 12px',
                     borderRadius: '12px',
                     fontSize: '11px',
                     fontWeight: '500'
                   }}>
-                    {recorrencia.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                    {getStatusLabel(recorrencia.status)}
                   </span>
                 </div>
               </div>
@@ -344,14 +370,19 @@ function Recorrencias() {
               }}>
                 <button
                   onClick={() => gerarAgora(recorrencia.id)}
+                  disabled={recorrencia.status === 'concluida'}
                   style={{
                     flex: 1,
-                    backgroundColor: 'rgba(45,138,78,0.2)',
-                    color: '#2d8a4e',
+                    backgroundColor: recorrencia.status === 'concluida' 
+                      ? 'rgba(255,255,255,0.05)' 
+                      : 'rgba(45,138,78,0.2)',
+                    color: recorrencia.status === 'concluida' 
+                      ? 'rgba(255,255,255,0.3)' 
+                      : '#2d8a4e',
                     border: 'none',
                     padding: '6px 12px',
                     borderRadius: '6px',
-                    cursor: 'pointer',
+                    cursor: recorrencia.status === 'concluida' ? 'not-allowed' : 'pointer',
                     fontSize: '12px',
                     fontWeight: '500'
                   }}
@@ -522,25 +553,50 @@ function Recorrencias() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
-                  📅 Data de Início
-                </label>
-                <input
-                  type="date"
-                  value={formData.dataInicio}
-                  onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    color: '#ffffff'
-                  }}
-                  required
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
+                    📅 Data de Início
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dataInicio}
+                    onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '4px' }}>
+                    📅 Data de Término (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dataTermino}
+                    onChange={(e) => setFormData({ ...formData, dataTermino: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                  />
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '4px' }}>
+                    Deixe em branco para recorrência sem data de término
+                  </p>
+                </div>
               </div>
 
               <div style={{ marginBottom: '12px' }}>

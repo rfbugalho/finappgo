@@ -54,11 +54,14 @@ export const adicionarRecorrencia = async (recorrencia) => {
       recorrencia.diaVencimento
     )
 
+    // Verificar se a recorrência já está dentro do período
+    const status = verificarStatus(proximoVencimento, recorrencia.dataTermino)
+
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       ...recorrencia,
       userId: user.uid,
       proximoVencimento: proximoVencimento,
-      status: 'ativo',
+      status: status,
       criadoEm: new Date().toISOString()
     })
 
@@ -115,8 +118,20 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
 
     const recorrencia = recorrenciaDoc.data()
 
+    // Verificar se a recorrência está dentro do período
+    const hoje = new Date().toISOString().split('T')[0]
+    
+    // Se tiver data de término e já passou, não gerar
+    if (recorrencia.dataTermino && recorrencia.dataTermino < hoje) {
+      await updateDoc(recorrenciaRef, {
+        status: 'concluida',
+        atualizadoEm: new Date().toISOString()
+      })
+      return null
+    }
+
     const lancamento = {
-      data: new Date().toISOString().split('T')[0],
+      data: hoje,
       descricao: `${recorrencia.nome} (Recorrente)`,
       categoria: recorrencia.categoria,
       subcategoria: recorrencia.subcategoria || '',
@@ -133,12 +148,13 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
     await addDoc(collection(db, LOG_COLLECTION), {
       recorrenciaId: recorrenciaId,
       lancamentoId: resultado.id,
-      dataGeracao: new Date().toISOString(),
+      dataGeracao: hoje,
       userId: user.uid,
       mes: new Date().getMonth() + 1,
       ano: new Date().getFullYear()
     })
 
+    // Calcular próximo vencimento
     const proximoVencimento = calcularProximoVencimento(
       recorrencia.dataInicio,
       recorrencia.periodicidade,
@@ -146,9 +162,13 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
       true
     )
 
+    // Verificar se a recorrência ainda está dentro do período
+    const novoStatus = verificarStatus(proximoVencimento, recorrencia.dataTermino)
+
     await updateDoc(recorrenciaRef, {
       proximoVencimento: proximoVencimento,
-      ultimaGeracao: new Date().toISOString(),
+      ultimaGeracao: hoje,
+      status: novoStatus,
       atualizadoEm: new Date().toISOString()
     })
 
@@ -190,6 +210,22 @@ export const calcularProximoVencimento = (dataInicio, periodicidade, diaVencimen
   return data.toISOString().split('T')[0]
 }
 
+export const verificarStatus = (proximoVencimento, dataTermino) => {
+  const hoje = new Date().toISOString().split('T')[0]
+  
+  // Se tiver data de término e já passou
+  if (dataTermino && dataTermino < hoje) {
+    return 'concluida'
+  }
+  
+  // Se o próximo vencimento for maior que a data de término
+  if (dataTermino && proximoVencimento > dataTermino) {
+    return 'concluida'
+  }
+  
+  return 'ativo'
+}
+
 export const processarRecorrencias = async () => {
   try {
     const user = auth.currentUser
@@ -208,6 +244,7 @@ export const processarRecorrencias = async () => {
     for (const doc of querySnapshot.docs) {
       const recorrencia = doc.data()
       
+      // Verificar se já foi gerado este mês
       const logQuery = query(
         collection(db, LOG_COLLECTION),
         where('recorrenciaId', '==', doc.id),
