@@ -8,6 +8,7 @@ import { buscarContas } from '../firebase/contasService'
 import { buscarCartoes } from '../firebase/cartoesService'
 import { buscarMetas } from '../firebase/metasService'
 import { gerarNotificacoesAutomaticas } from '../firebase/notificacoesService'
+import { formatarMoeda } from '../utils/formatters'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -160,19 +161,23 @@ function Dashboard() {
     // Despesas do período filtrado
     const despesasFiltradas = dados.filter(item => item.tipo === 'despesa')
     
-    // Despesas vencidas (data < hoje)
-    const vencidas = despesasFiltradas.filter(item => item.data < hojeStr)
+    // Despesas vencidas (data < hoje E status != pago)
+    const vencidas = despesasFiltradas.filter(item => {
+      const estaVencida = item.data < hojeStr
+      const naoPaga = item.statusPagamento !== 'pago'
+      return estaVencida && naoPaga
+    })
     setDespesasVencidas(vencidas)
     setValorTotalVencido(vencidas.reduce((acc, item) => acc + item.valor, 0))
     
     // Despesas de hoje
-    const hojeDespesas = despesasFiltradas.filter(item => item.data === hojeStr)
+    const hojeDespesas = despesasFiltradas.filter(item => item.data === hojeStr && item.statusPagamento !== 'pago')
     setDespesasHoje(hojeDespesas)
     setValorTotalHoje(hojeDespesas.reduce((acc, item) => acc + item.valor, 0))
     
     // Despesas dos próximos 7 dias
     const proximosDias = despesasFiltradas.filter(item => 
-      item.data > hojeStr && item.data <= proximos7DiasStr
+      item.data > hojeStr && item.data <= proximos7DiasStr && item.statusPagamento !== 'pago'
     )
     setDespesasProximosDias(proximosDias)
 
@@ -286,10 +291,6 @@ function Dashboard() {
   // ==========================================
   // FORMATADORES
   // ==========================================
-  const formatarMoeda = (valor) => {
-    return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
   const getBandeiraEmoji = (bandeira) => {
     const bandeiras = {
       visa: '💳',
@@ -725,6 +726,97 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
+          METAS FINANCEIRAS
+          ========================================== */}
+      <div style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ 
+          fontSize: 'clamp(12px, 2vw, 14px)', 
+          color: 'rgba(255,255,255,0.6)',
+          fontWeight: '600',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          🎯 Metas Financeiras
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '10px'
+        }}>
+          {carregando ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Carregando metas...
+            </p>
+          ) : metas.length === 0 ? (
+            <p style={{ color: 'rgba(255,255,255,0.3)', gridColumn: '1/-1', textAlign: 'center' }}>
+              Nenhuma meta cadastrada
+            </p>
+          ) : (
+            metas.slice(0, 4).map(meta => {
+              const progresso = meta.progresso || 0
+              const statusText = getStatusText(meta.status)
+              
+              return (
+                <div key={meta.id} style={{
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid ${meta.cor || '#4299e1'}`
+                }}>
+                  <p style={{ 
+                    color: '#fff', 
+                    fontSize: 'clamp(11px, 1.5vw, 13px)', 
+                    fontWeight: '500',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {meta.nome}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
+                      {progresso.toFixed(0)}%
+                    </span>
+                    <span style={{ 
+                      color: meta.status === 'concluida' ? '#48bb78' : meta.status === 'atrasada' ? '#fc8181' : '#4299e1',
+                      fontSize: '9px',
+                      fontWeight: '500'
+                    }}>
+                      {statusText}
+                    </span>
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '4px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: '2px',
+                    marginTop: '6px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${Math.min(progresso, 100)}%`,
+                      height: '100%',
+                      backgroundColor: meta.cor || '#4299e1',
+                      borderRadius: '2px',
+                      transition: 'width 0.5s ease'
+                    }} />
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ==========================================
           RANKING DE CATEGORIAS
           ========================================== */}
       <div style={{
@@ -848,6 +940,18 @@ function Dashboard() {
                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginLeft: '10px' }}>
                     {item.categoria}
                   </span>
+                  {item.statusPagamento === 'pago' && (
+                    <span style={{
+                      backgroundColor: 'rgba(45,138,78,0.2)',
+                      color: '#2d8a4e',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      marginLeft: '6px'
+                    }}>
+                      ✅ Pago
+                    </span>
+                  )}
                 </div>
                 <span style={{ color: '#fc8181', fontWeight: '600', fontSize: '14px' }}>
                   {formatarMoeda(item.valor)}
