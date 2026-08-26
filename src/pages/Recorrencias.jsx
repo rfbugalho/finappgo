@@ -63,9 +63,21 @@ function Recorrencias() {
   }
 
   useEffect(() => {
-    carregarRecorrencias()
-    carregarCategorias()
-    carregarContas()
+    const carregarDados = async () => {
+      await carregarRecorrencias()
+      await carregarCategorias()
+      await carregarContas()
+      
+      // Processar recorrências automaticamente ao carregar
+      try {
+        await processarRecorrencias()
+        // Recarregar após processar
+        await carregarRecorrencias()
+      } catch (error) {
+        console.error('Erro ao processar recorrências:', error)
+      }
+    }
+    carregarDados()
   }, [])
 
   // ==========================================
@@ -151,6 +163,15 @@ function Recorrencias() {
       }
       
       await carregarRecorrencias()
+      
+      // Processar recorrências após salvar
+      try {
+        await processarRecorrencias()
+        await carregarRecorrencias()
+      } catch (error) {
+        console.error('Erro ao processar recorrências:', error)
+      }
+      
       setModalAberto(false)
     } catch (error) {
       alert('Erro ao salvar recorrência.')
@@ -158,26 +179,44 @@ function Recorrencias() {
     }
   }
 
+  // ==========================================
+  // FUNÇÃO EXCLUIR CORRIGIDA
+  // ==========================================
   const excluirRecorrencia = async (id, nome) => {
-    if (window.confirm(`Excluir a recorrência "${nome}"?`)) {
-      await excluirRecorrencia(id)
-      await carregarRecorrencias()
+    if (window.confirm(`Excluir a recorrência "${nome || 'selecionada'}"?`)) {
+      try {
+        await excluirRecorrencia(id)
+        await carregarRecorrencias()
+      } catch (error) {
+        alert('Erro ao excluir recorrência. Tente novamente.')
+        console.error(error)
+      }
     }
   }
 
   const gerarAgora = async (id) => {
     if (window.confirm('Gerar lançamento agora?')) {
-      await gerarLancamentoRecorrente(id)
-      await carregarRecorrencias()
-      alert('Lançamento gerado com sucesso!')
+      try {
+        await gerarLancamentoRecorrente(id)
+        await carregarRecorrencias()
+        alert('Lançamento gerado com sucesso!')
+      } catch (error) {
+        alert('Erro ao gerar lançamento.')
+        console.error(error)
+      }
     }
   }
 
   const processarTodas = async () => {
     if (window.confirm('Processar todas as recorrências pendentes?')) {
-      await processarRecorrencias()
-      await carregarRecorrencias()
-      alert('Recorrências processadas!')
+      try {
+        await processarRecorrencias()
+        await carregarRecorrencias()
+        alert('Recorrências processadas com sucesso!')
+      } catch (error) {
+        alert('Erro ao processar recorrências.')
+        console.error(error)
+      }
     }
   }
 
