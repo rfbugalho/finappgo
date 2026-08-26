@@ -3,10 +3,12 @@ import {
   buscarLancamentos, 
   adicionarLancamento, 
   atualizarLancamento, 
-  excluirLancamento 
+  excluirLancamento,
+  atualizarStatusPagamento
 } from '../firebase/lancamentosService'
 import { buscarCategorias } from '../firebase/categoriasService'
 import { buscarContasAtivas } from '../firebase/contasService'
+import { formatarMoeda, formatarData } from '../utils/formatters'
 
 function Lancamentos() {
   // ==========================================
@@ -31,7 +33,8 @@ function Lancamentos() {
     conta: '',
     busca: '',
     ordenarPor: 'data',
-    ordem: 'desc'
+    ordem: 'desc',
+    status: 'todos'
   })
 
   // ==========================================
@@ -54,8 +57,15 @@ function Lancamentos() {
     subcategoria: '',
     tipo: 'despesa',
     valor: '',
-    contaId: ''
+    contaId: '',
+    statusPagamento: 'pendente'
   })
+
+  const statusPagamento = [
+    { valor: 'pendente', label: '⏳ Pendente', cor: '#ed8936' },
+    { valor: 'pago', label: '✅ Pago', cor: '#2d8a4e' },
+    { valor: 'vencido', label: '🔴 Vencido', cor: '#d94a4a' }
+  ]
 
   // ==========================================
   // CARREGAR DADOS
@@ -87,7 +97,6 @@ function Lancamentos() {
   const aplicarFiltros = () => {
     let dados = [...lancamentos]
 
-    // Filtro por período (mês/ano)
     const mesStr = String(filtros.mes).padStart(2, '0')
     const anoStr = String(filtros.ano)
     dados = dados.filter(item => {
@@ -96,22 +105,22 @@ function Lancamentos() {
       return partes[0] === anoStr && partes[1] === mesStr
     })
 
-    // Filtro por tipo
     if (filtros.tipo !== 'todos') {
       dados = dados.filter(item => item.tipo === filtros.tipo)
     }
 
-    // Filtro por categoria
     if (filtros.categoria) {
       dados = dados.filter(item => item.categoria === filtros.categoria)
     }
 
-    // Filtro por conta
     if (filtros.conta) {
       dados = dados.filter(item => item.contaId === filtros.conta)
     }
 
-    // Filtro por busca (descrição)
+    if (filtros.status !== 'todos') {
+      dados = dados.filter(item => item.statusPagamento === filtros.status)
+    }
+
     if (filtros.busca.trim()) {
       const buscaLower = filtros.busca.trim().toLowerCase()
       dados = dados.filter(item => 
@@ -146,7 +155,6 @@ function Lancamentos() {
 
     setLancamentosFiltrados(dados)
 
-    // Calcular totais
     const receitas = dados
       .filter(item => item.tipo === 'receita')
       .reduce((acc, item) => acc + item.valor, 0)
@@ -160,9 +168,6 @@ function Lancamentos() {
     setSaldoFiltrado(receitas - despesas)
   }
 
-  // ==========================================
-  // EFECTS
-  // ==========================================
   useEffect(() => {
     carregarLancamentos()
     carregarCategorias()
@@ -191,7 +196,8 @@ function Lancamentos() {
       conta: '',
       busca: '',
       ordenarPor: 'data',
-      ordem: 'desc'
+      ordem: 'desc',
+      status: 'todos'
     })
   }
 
@@ -207,7 +213,8 @@ function Lancamentos() {
       subcategoria: '',
       tipo: 'despesa',
       valor: '',
-      contaId: ''
+      contaId: '',
+      statusPagamento: 'pendente'
     })
     setModalEdicao(false)
     setModalAberto(true)
@@ -222,7 +229,8 @@ function Lancamentos() {
       subcategoria: lancamento.subcategoria || '',
       tipo: lancamento.tipo,
       valor: lancamento.valor,
-      contaId: lancamento.contaId || ''
+      contaId: lancamento.contaId || '',
+      statusPagamento: lancamento.statusPagamento || 'pendente'
     })
     setModalEdicao(true)
     setModalAberto(true)
@@ -238,7 +246,8 @@ function Lancamentos() {
       subcategoria: '',
       tipo: 'despesa',
       valor: '',
-      contaId: ''
+      contaId: '',
+      statusPagamento: 'pendente'
     })
   }
 
@@ -268,7 +277,8 @@ function Lancamentos() {
       subcategoria: formData.subcategoria || '',
       tipo: formData.tipo,
       valor: valorNumero,
-      contaId: formData.contaId
+      contaId: formData.contaId,
+      statusPagamento: formData.statusPagamento || 'pendente'
     }
 
     try {
@@ -298,23 +308,19 @@ function Lancamentos() {
     }
   }
 
+  const handleStatusChange = async (id, novoStatus) => {
+    try {
+      await atualizarStatusPagamento(id, novoStatus)
+      await carregarLancamentos()
+    } catch (error) {
+      alert('Erro ao atualizar status.')
+      console.error(error)
+    }
+  }
+
   // ==========================================
   // FUNÇÕES AUXILIARES
   // ==========================================
-  const formatarValor = (valor) => {
-    return `R$ ${parseFloat(valor).toFixed(2).replace('.', ',')}`
-  }
-
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
-  const categoriasFiltradas = categorias.filter(cat => cat.tipo === formData.tipo)
-  const categoriaSelecionada = categorias.find(cat => cat.nome === formData.categoria)
-  const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
-
   const getNomeConta = (contaId) => {
     const conta = contas.find(c => c.id === contaId)
     return conta ? conta.nomeExibicao || conta.instituicao : 'Conta não encontrada'
@@ -325,11 +331,24 @@ function Lancamentos() {
     return conta ? conta.logo || '🏦' : '🏦'
   }
 
-  // Opções para o seletor de ordenação
+  const getStatusLabel = (status) => {
+    const s = statusPagamento.find(s => s.valor === status)
+    return s ? s.label : '⏳ Pendente'
+  }
+
+  const getStatusCor = (status) => {
+    const s = statusPagamento.find(s => s.valor === status)
+    return s ? s.cor : '#ed8936'
+  }
+
+  const categoriasFiltradas = categorias.filter(cat => cat.tipo === formData.tipo)
+  const categoriaSelecionada = categorias.find(cat => cat.nome === formData.categoria)
+  const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
+
   const opcoesOrdenacao = [
-    { valor: 'data', label: 'Data' },
-    { valor: 'descricao', label: 'Descrição' },
-    { valor: 'valor', label: 'Valor' }
+    { valor: 'data', label: '📅 Data' },
+    { valor: 'descricao', label: '📝 Descrição' },
+    { valor: 'valor', label: '💰 Valor' }
   ]
 
   // ==========================================
@@ -337,9 +356,7 @@ function Lancamentos() {
   // ==========================================
   return (
     <div>
-      {/* ==========================================
-          CABEÇALHO
-          ========================================== */}
+      {/* CABEÇALHO */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -379,9 +396,7 @@ function Lancamentos() {
         </button>
       </div>
 
-      {/* ==========================================
-          TOTALIZADORES
-          ========================================== */}
+      {/* TOTALIZADORES */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -396,7 +411,7 @@ function Lancamentos() {
         }}>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Receitas</p>
           <p style={{ color: '#2d8a4e', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
-            {formatarValor(totalReceitas)}
+            {formatarMoeda(totalReceitas)}
           </p>
         </div>
         <div style={{
@@ -407,7 +422,7 @@ function Lancamentos() {
         }}>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Despesas</p>
           <p style={{ color: '#d94a4a', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
-            {formatarValor(totalDespesas)}
+            {formatarMoeda(totalDespesas)}
           </p>
         </div>
         <div style={{
@@ -423,7 +438,7 @@ function Lancamentos() {
             fontWeight: '700', 
             margin: 0 
           }}>
-            {formatarValor(saldoFiltrado)}
+            {formatarMoeda(saldoFiltrado)}
           </p>
         </div>
         <div style={{
@@ -439,9 +454,7 @@ function Lancamentos() {
         </div>
       </div>
 
-      {/* ==========================================
-          FILTROS
-          ========================================== */}
+      {/* FILTROS */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
         padding: '15px 20px',
@@ -451,8 +464,8 @@ function Lancamentos() {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '12px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '10px',
           alignItems: 'end'
         }}>
           {/* Mês */}
@@ -529,6 +542,33 @@ function Lancamentos() {
             </select>
           </div>
 
+          {/* Status */}
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
+              📌 Status
+            </label>
+            <select
+              value={filtros.status}
+              onChange={(e) => handleFiltroChange('status', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                fontSize: '13px'
+              }}
+            >
+              <option value="todos" style={{ backgroundColor: '#1a2b4a' }}>Todos</option>
+              {statusPagamento.map(s => (
+                <option key={s.valor} value={s.valor} style={{ backgroundColor: '#1a2b4a' }}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Categoria */}
           <div>
             <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
@@ -588,11 +628,11 @@ function Lancamentos() {
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '12px',
+          gap: '10px',
           marginTop: '12px',
           alignItems: 'end'
         }}>
-          <div style={{ flex: 2, minWidth: '200px' }}>
+          <div style={{ flex: 2, minWidth: '180px' }}>
             <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
               🔍 Buscar por descrição
             </label>
@@ -613,7 +653,7 @@ function Lancamentos() {
             />
           </div>
 
-          <div style={{ flex: 1, minWidth: '140px' }}>
+          <div style={{ flex: 1, minWidth: '120px' }}>
             <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
               Ordenar por
             </label>
@@ -638,7 +678,7 @@ function Lancamentos() {
             </select>
           </div>
 
-          <div style={{ flex: 1, minWidth: '120px' }}>
+          <div style={{ flex: 1, minWidth: '100px' }}>
             <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
               Ordem
             </label>
@@ -684,9 +724,7 @@ function Lancamentos() {
         </div>
       </div>
 
-      {/* ==========================================
-          TABELA DE LANÇAMENTOS
-          ========================================== */}
+      {/* TABELA DE LANÇAMENTOS */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: '20px',
@@ -702,7 +740,7 @@ function Lancamentos() {
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.4)' }}>
             <p style={{ fontSize: '18px' }}>Nenhum lançamento encontrado</p>
             <p style={{ fontSize: '14px' }}>
-              {filtros.busca || filtros.categoria || filtros.conta || filtros.tipo !== 'todos' 
+              {filtros.busca || filtros.categoria || filtros.conta || filtros.tipo !== 'todos' || filtros.status !== 'todos'
                 ? 'Tente ajustar os filtros de busca' 
                 : 'Clique em "Novo Lançamento" para começar'}
             </p>
@@ -711,76 +749,94 @@ function Lancamentos() {
           <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Data</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Descrição</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Categoria</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Subcategoria</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Conta</th>
-                <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Tipo</th>
-                <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Valor</th>
-                <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Ações</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Data</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Descrição</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Categoria</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Conta</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Tipo</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Status</th>
+                <th style={{ padding: '10px', textAlign: 'right', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Valor</th>
+                <th style={{ padding: '10px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {lancamentosFiltrados.map(item => (
                 <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>{formatarData(item.data)}</td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>{item.descricao}</td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>{formatarData(item.data)}</td>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>{item.descricao}</td>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>
                     <span style={{
                       backgroundColor: 'rgba(255,255,255,0.08)',
                       padding: '4px 12px',
                       borderRadius: '20px',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       color: 'rgba(255,255,255,0.7)'
                     }}>
                       {item.categoria}
                     </span>
                   </td>
-                  <td style={{ padding: '12px', fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
-                    {item.subcategoria || '-'}
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>{getLogoConta(item.contaId)}</span>
-                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
                         {getNomeConta(item.contaId)}
                       </span>
                     </span>
                   </td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>
                     <span style={{
                       backgroundColor: item.tipo === 'receita' ? 'rgba(45,138,78,0.2)' : 'rgba(217,74,74,0.2)',
                       color: item.tipo === 'receita' ? '#2d8a4e' : '#d94a4a',
                       padding: '4px 12px',
                       borderRadius: '20px',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: '500'
                     }}>
                       {item.tipo === 'receita' ? '📈 Receita' : '📉 Despesa'}
                     </span>
                   </td>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>
+                    <select
+                      value={item.statusPagamento || 'pendente'}
+                      onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: getStatusCor(item.statusPagamento || 'pendente'),
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {statusPagamento.map(s => (
+                        <option key={s.valor} value={s.valor} style={{ backgroundColor: '#1a2b4a', color: s.cor }}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td style={{ 
-                    padding: '12px', 
-                    fontSize: '14px', 
+                    padding: '10px', 
+                    fontSize: '13px', 
                     textAlign: 'right',
                     fontWeight: '600',
                     color: item.tipo === 'receita' ? '#2d8a4e' : '#d94a4a'
                   }}>
-                    {item.tipo === 'receita' ? '+' : '-'} {formatarValor(item.valor)}
+                    {item.tipo === 'receita' ? '+' : '-'} {formatarMoeda(item.valor)}
                   </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                  <td style={{ padding: '10px', textAlign: 'center' }}>
                     <button
                       onClick={() => abrirModalEditar(item)}
                       style={{
                         backgroundColor: 'rgba(58,122,189,0.2)',
                         color: '#3a7abd',
                         border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '4px',
                         cursor: 'pointer',
-                        fontSize: '13px',
-                        marginRight: '8px'
+                        fontSize: '12px',
+                        marginRight: '6px'
                       }}
                     >
                       ✏️
@@ -791,10 +847,10 @@ function Lancamentos() {
                         backgroundColor: 'rgba(217,74,74,0.2)',
                         color: '#d94a4a',
                         border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '4px',
                         cursor: 'pointer',
-                        fontSize: '13px'
+                        fontSize: '12px'
                       }}
                     >
                       🗑️
@@ -807,9 +863,7 @@ function Lancamentos() {
         )}
       </div>
 
-      {/* ==========================================
-          MODAL - Formulário de Lançamento
-          ========================================== */}
+      {/* MODAL - Formulário de Lançamento */}
       {modalAberto && (
         <div style={{
           position: 'fixed',
@@ -830,7 +884,7 @@ function Lancamentos() {
             backgroundColor: '#1a2b4a',
             padding: '30px',
             borderRadius: '16px',
-            maxWidth: '500px',
+            maxWidth: '520px',
             width: '100%',
             border: '1px solid rgba(255,255,255,0.08)',
             maxHeight: '90vh',
@@ -848,13 +902,7 @@ function Lancamentos() {
             <form onSubmit={salvarLancamento}>
               {/* Data */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   📅 Data
                 </label>
                 <input
@@ -878,13 +926,7 @@ function Lancamentos() {
 
               {/* Descrição */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   📝 Descrição
                 </label>
                 <input
@@ -909,13 +951,7 @@ function Lancamentos() {
 
               {/* Tipo */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   📊 Tipo
                 </label>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -962,13 +998,7 @@ function Lancamentos() {
 
               {/* Conta */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   🏦 Conta
                 </label>
                 {carregandoContas ? (
@@ -1009,13 +1039,7 @@ function Lancamentos() {
 
               {/* Categoria */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   🏷️ Categoria
                 </label>
                 {carregandoCategorias ? (
@@ -1064,13 +1088,7 @@ function Lancamentos() {
               {/* Subcategoria */}
               {formData.categoria && subcategoriasDisponiveis.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: 'rgba(255,255,255,0.6)',
-                    marginBottom: '6px'
-                  }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                     🔹 Subcategoria
                   </label>
                   <select
@@ -1098,15 +1116,37 @@ function Lancamentos() {
                 </div>
               )}
 
+              {/* Status de Pagamento */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                  📌 Status de Pagamento
+                </label>
+                <select
+                  value={formData.statusPagamento}
+                  onChange={(e) => setFormData({ ...formData, statusPagamento: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                >
+                  {statusPagamento.map(s => (
+                    <option key={s.valor} value={s.valor} style={{ backgroundColor: '#1a2b4a', color: s.cor }}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Valor */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '6px'
-                }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
                   💰 Valor (R$)
                 </label>
                 <input

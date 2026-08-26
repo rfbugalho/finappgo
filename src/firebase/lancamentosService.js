@@ -150,6 +150,31 @@ export const buscarLancamentosPorPeriodo = async (mes, ano) => {
 }
 
 // ==========================================
+// BUSCAR LANÇAMENTOS POR STATUS DE PAGAMENTO
+// ==========================================
+export const buscarLancamentosPorStatus = async (status) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      where('userId', '==', user.uid),
+      where('statusPagamento', '==', status)
+    )
+    const querySnapshot = await getDocs(q)
+    const lista = []
+    querySnapshot.forEach((doc) => {
+      lista.push({ id: doc.id, ...doc.data() })
+    })
+    return lista
+  } catch (error) {
+    console.error('Erro ao buscar lançamentos por status:', error)
+    return []
+  }
+}
+
+// ==========================================
 // ADICIONAR LANÇAMENTO (com atualização de saldo)
 // ==========================================
 export const adicionarLancamento = async (lancamento) => {
@@ -159,11 +184,15 @@ export const adicionarLancamento = async (lancamento) => {
 
     const valorNumero = parseFloat(lancamento.valor)
     
+    // Definir status padrão como 'pendente' se não for informado
+    const statusPagamento = lancamento.statusPagamento || 'pendente'
+    
     // Salvar o lançamento
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       ...lancamento,
       valor: valorNumero,
       userId: user.uid,
+      statusPagamento: statusPagamento,
       criadoEm: new Date().toISOString()
     })
 
@@ -227,6 +256,26 @@ export const atualizarLancamento = async (id, lancamento) => {
     return { id, ...lancamento }
   } catch (error) {
     console.error('Erro ao atualizar lançamento:', error)
+    throw error
+  }
+}
+
+// ==========================================
+// ATUALIZAR STATUS DE PAGAMENTO
+// ==========================================
+export const atualizarStatusPagamento = async (id, status) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const docRef = doc(db, COLLECTION_NAME, id)
+    await updateDoc(docRef, {
+      statusPagamento: status,
+      atualizadoEm: new Date().toISOString()
+    })
+    return { id, status }
+  } catch (error) {
+    console.error('Erro ao atualizar status de pagamento:', error)
     throw error
   }
 }
