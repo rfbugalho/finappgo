@@ -8,13 +8,17 @@ import {
   getDocs, 
   query, 
   where,
-  orderBy 
+  orderBy,
+  getDoc
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
 
 const COLLECTION_NAME = 'contas'
 
-// Buscar todas as contas do usuário
+// ==========================================
+// BUSCAR CONTAS
+// ==========================================
+
 export const buscarContas = async () => {
   try {
     const user = auth.currentUser
@@ -37,7 +41,10 @@ export const buscarContas = async () => {
   }
 }
 
-// Buscar contas ativas
+// ==========================================
+// BUSCAR CONTAS ATIVAS
+// ==========================================
+
 export const buscarContasAtivas = async () => {
   try {
     const user = auth.currentUser
@@ -60,7 +67,10 @@ export const buscarContasAtivas = async () => {
   }
 }
 
-// Adicionar uma nova conta
+// ==========================================
+// ADICIONAR CONTA
+// ==========================================
+
 export const adicionarConta = async (conta) => {
   try {
     const user = auth.currentUser
@@ -80,7 +90,10 @@ export const adicionarConta = async (conta) => {
   }
 }
 
-// Atualizar uma conta
+// ==========================================
+// ATUALIZAR CONTA
+// ==========================================
+
 export const atualizarConta = async (id, conta) => {
   try {
     const user = auth.currentUser
@@ -98,21 +111,10 @@ export const atualizarConta = async (id, conta) => {
   }
 }
 
-// Atualizar saldo de uma conta
-export const atualizarSaldoConta = async (id, novoSaldo) => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, id)
-    await updateDoc(docRef, {
-      saldoAtual: novoSaldo,
-      atualizadoEm: new Date().toISOString()
-    })
-  } catch (error) {
-    console.error('Erro ao atualizar saldo:', error)
-    throw error
-  }
-}
+// ==========================================
+// EXCLUIR CONTA
+// ==========================================
 
-// Excluir uma conta
 export const excluirConta = async (id) => {
   try {
     const user = auth.currentUser
@@ -126,6 +128,27 @@ export const excluirConta = async (id) => {
     throw error
   }
 }
+
+// ==========================================
+// ATUALIZAR SALDO DA CONTA
+// ==========================================
+
+export const atualizarSaldoConta = async (id, novoSaldo) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const docRef = doc(db, COLLECTION_NAME, id)
+    await updateDoc(docRef, {
+      saldoAtual: novoSaldo,
+      atualizadoEm: new Date().toISOString()
+    })
+  } catch (error) {
+    console.error('Erro ao atualizar saldo:', error)
+    throw error
+  }
+}
+
 // ==========================================
 // TRANSFERÊNCIA ENTRE CONTAS
 // ==========================================
@@ -177,19 +200,20 @@ export const transferirEntreContas = async (contaOrigemId, contaDestinoId, valor
       atualizadoEm: new Date().toISOString()
     })
 
-    // Registrar transferência (opcional - criar no Firestore)
-    const transferencia = {
-      contaOrigemId: contaOrigemId,
-      contaDestinoId: contaDestinoId,
-      valor: valorNumero,
-      descricao: descricao || 'Transferência entre contas',
-      userId: user.uid,
-      data: new Date().toISOString().split('T')[0],
-      criadoEm: new Date().toISOString()
+    // Registrar transferência no histórico (coleção separada)
+    try {
+      await addDoc(collection(db, 'transferencias'), {
+        contaOrigemId: contaOrigemId,
+        contaDestinoId: contaDestinoId,
+        valor: valorNumero,
+        descricao: descricao || 'Transferência entre contas',
+        userId: user.uid,
+        data: new Date().toISOString().split('T')[0],
+        criadoEm: new Date().toISOString()
+      })
+    } catch (err) {
+      console.warn('Erro ao registrar histórico de transferência:', err)
     }
-
-    // Salvar no histórico (opcional)
-    await addDoc(collection(db, 'transferencias'), transferencia)
 
     return {
       origem: { id: contaOrigemId, saldoAtual: novoSaldoOrigem },
