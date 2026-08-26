@@ -3,7 +3,7 @@ import {
   buscarCartoes, 
   adicionarCartao, 
   atualizarCartao, 
-  excluirCartao as excluirCartaoService,
+  excluirCartao,
   buscarDespesasCartao,
   adicionarDespesaCartao,
   atualizarDespesaCartao,
@@ -16,6 +16,8 @@ function Cartoes() {
   const [cartaoSelecionado, setCartaoSelecionado] = useState(null)
   const [despesas, setDespesas] = useState([])
   const [mostrarDespesas, setMostrarDespesas] = useState(false)
+  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1)
+  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear())
 
   // Modal Cartão
   const [modalCartaoAberto, setModalCartaoAberto] = useState(false)
@@ -40,7 +42,8 @@ function Cartoes() {
     valor: '',
     parcelado: false,
     totalParcelas: 1,
-    parcelaAtual: 1
+    mesFatura: new Date().getMonth() + 1,
+    anoFatura: new Date().getFullYear()
   })
 
   const bandeiras = [
@@ -48,8 +51,7 @@ function Cartoes() {
     { nome: 'Mastercard', emoji: '💳' },
     { nome: 'American Express', emoji: '💳' },
     { nome: 'Elo', emoji: '💳' },
-    { nome: 'Andorinha', emoji: '💳' },
-    { nome: 'Trimais', emoji: '💳' },
+    { nome: 'Hipercard', emoji: '💳' },
     { nome: 'Outro', emoji: '💳' }
   ]
 
@@ -134,18 +136,10 @@ function Cartoes() {
     }
   }
 
-  // ==========================================
-  // FUNÇÃO EXCLUIR CORRIGIDA
-  // ==========================================
   const excluirCartao = async (id, nome) => {
-    if (window.confirm(`Excluir o cartão "${nome || 'selecionado'}"?`)) {
-      try {
-        await excluirCartaoService(id)
-        await carregarCartoes()
-      } catch (error) {
-        alert('Erro ao excluir cartão. Tente novamente.')
-        console.error(error)
-      }
+    if (window.confirm(`Excluir o cartão "${nome}"?`)) {
+      await excluirCartao(id)
+      await carregarCartoes()
     }
   }
 
@@ -155,21 +149,36 @@ function Cartoes() {
   const verDespesas = async (cartaoId) => {
     const cartao = cartoes.find(c => c.id === cartaoId)
     setCartaoSelecionado(cartao)
-    const dados = await buscarDespesasCartao(cartaoId)
+    const dados = await buscarDespesasCartao(cartaoId, filtroMes, filtroAno)
     setDespesas(dados)
     setMostrarDespesas(true)
   }
 
+  const carregarDespesasFiltradas = async () => {
+    if (cartaoSelecionado) {
+      const dados = await buscarDespesasCartao(cartaoSelecionado.id, filtroMes, filtroAno)
+      setDespesas(dados)
+    }
+  }
+
+  useEffect(() => {
+    if (mostrarDespesas && cartaoSelecionado) {
+      carregarDespesasFiltradas()
+    }
+  }, [filtroMes, filtroAno])
+
   const abrirModalNovaDespesa = (cartaoId) => {
+    const hoje = new Date()
     setFormDespesa({
       id: null,
       cartaoId: cartaoId,
-      data: new Date().toISOString().split('T')[0],
+      data: hoje.toISOString().split('T')[0],
       descricao: '',
       valor: '',
       parcelado: false,
       totalParcelas: 1,
-      parcelaAtual: 1
+      mesFatura: hoje.getMonth() + 1,
+      anoFatura: hoje.getFullYear()
     })
     setModalEdicaoDespesa(false)
     setModalDespesaAberto(true)
@@ -184,7 +193,8 @@ function Cartoes() {
       valor: despesa.valor,
       parcelado: despesa.parcelado || false,
       totalParcelas: despesa.totalParcelas || 1,
-      parcelaAtual: despesa.parcelaAtual || 1
+      mesFatura: despesa.mesFatura || new Date(despesa.data).getMonth() + 1,
+      anoFatura: despesa.anoFatura || new Date(despesa.data).getFullYear()
     })
     setModalEdicaoDespesa(true)
     setModalDespesaAberto(true)
@@ -210,7 +220,9 @@ function Cartoes() {
       descricao: formDespesa.descricao.trim(),
       valor: valorNumero,
       parcelado: formDespesa.parcelado,
-      totalParcelas: formDespesa.parcelado ? formDespesa.totalParcelas : 1
+      totalParcelas: formDespesa.parcelado ? formDespesa.totalParcelas : 1,
+      mesFatura: formDespesa.mesFatura,
+      anoFatura: formDespesa.anoFatura
     }
 
     try {
@@ -221,7 +233,7 @@ function Cartoes() {
       }
       
       if (formDespesa.cartaoId) {
-        const dados = await buscarDespesasCartao(formDespesa.cartaoId)
+        const dados = await buscarDespesasCartao(formDespesa.cartaoId, filtroMes, filtroAno)
         setDespesas(dados)
       }
       await carregarCartoes()
@@ -235,7 +247,7 @@ function Cartoes() {
   const excluirDespesa = async (id, cartaoId) => {
     if (window.confirm('Excluir esta despesa?')) {
       await excluirDespesaCartao(id, cartaoId)
-      const dados = await buscarDespesasCartao(cartaoId)
+      const dados = await buscarDespesasCartao(cartaoId, filtroMes, filtroAno)
       setDespesas(dados)
       await carregarCartoes()
     }
@@ -258,6 +270,14 @@ function Cartoes() {
     const b = bandeiras.find(b => b.nome.toLowerCase() === bandeira?.toLowerCase())
     return b?.emoji || '💳'
   }
+
+  const getNomeMes = (mes) => {
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    return meses[mes - 1] || mes
+  }
+
+  // Calcular total da fatura
+  const totalFatura = despesas.reduce((acc, item) => acc + item.valor, 0)
 
   return (
     <div>
@@ -693,9 +713,11 @@ function Cartoes() {
             backgroundColor: '#1a2b4a',
             padding: '30px',
             borderRadius: '16px',
-            maxWidth: '480px',
+            maxWidth: '520px',
             width: '100%',
-            border: '1px solid rgba(255,255,255,0.08)'
+            border: '1px solid rgba(255,255,255,0.08)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '20px', color: '#ffffff', marginBottom: '4px' }}>
               {modalEdicaoDespesa ? '✏️ Editar Despesa' : '➕ Nova Despesa no Cartão'}
@@ -707,7 +729,7 @@ function Cartoes() {
             <form onSubmit={salvarDespesa}>
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  📅 Data
+                  📅 Data da Compra
                 </label>
                 <input
                   type="date"
@@ -810,6 +832,52 @@ function Cartoes() {
                 </div>
               )}
 
+              {/* ⭐ NOVO: Selecionar Fatura */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📋 Lançar na Fatura de
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <select
+                    value={formDespesa.mesFatura}
+                    onChange={(e) => setFormDespesa({ ...formDespesa, mesFatura: parseInt(e.target.value) })}
+                    style={{
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                      <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
+                        {getNomeMes(m)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={formDespesa.anoFatura}
+                    onChange={(e) => setFormDespesa({ ...formDespesa, anoFatura: parseInt(e.target.value) })}
+                    style={{
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {[2024, 2025, 2026, 2027].map(a => (
+                      <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '4px' }}>
+                  A despesa será exibida na fatura de {getNomeMes(formDespesa.mesFatura)}/{formDespesa.anoFatura}
+                </p>
+              </div>
+
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
@@ -851,7 +919,7 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - LISTA DE DESPESAS
+          MODAL - FATURA (COM FILTROS E GRID COMPLETO)
           ========================================== */}
       {mostrarDespesas && cartaoSelecionado && (
         <div style={{
@@ -872,13 +940,14 @@ function Cartoes() {
             backgroundColor: '#1a2b4a',
             padding: '30px',
             borderRadius: '16px',
-            maxWidth: '800px',
+            maxWidth: '900px',
             width: '100%',
             border: '1px solid rgba(255,255,255,0.08)',
-            maxHeight: '80vh',
+            maxHeight: '85vh',
             overflowY: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            {/* Cabeçalho */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h2 style={{ fontSize: '20px', color: '#ffffff', margin: 0 }}>
                   📋 Fatura - {cartaoSelecionado.nome}
@@ -903,20 +972,73 @@ function Cartoes() {
               </button>
             </div>
 
+            {/* Filtros de Mês/Ano */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginBottom: '16px',
+              padding: '12px 16px',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              flexWrap: 'wrap',
+              alignItems: 'center'
+            }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Filtrar por:</span>
+              <select
+                value={filtroMes}
+                onChange={(e) => setFiltroMes(parseInt(e.target.value))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  fontSize: '13px'
+                }}
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                  <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
+                    {getNomeMes(m)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filtroAno}
+                onChange={(e) => setFiltroAno(parseInt(e.target.value))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  fontSize: '13px'
+                }}
+              >
+                {[2024, 2025, 2026, 2027].map(a => (
+                  <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
+                ))}
+              </select>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginLeft: 'auto' }}>
+                Total da Fatura: <strong style={{ color: '#fc8181' }}>{formatarMoeda(totalFatura)}</strong>
+              </span>
+            </div>
+
+            {/* Tabela de Despesas */}
             {despesas.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <p style={{ color: 'rgba(255,255,255,0.3)' }}>Nenhuma despesa neste cartão</p>
+                <p style={{ color: 'rgba(255,255,255,0.3)' }}>Nenhuma despesa nesta fatura</p>
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '14px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Data</th>
-                      <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
-                      <th style={{ padding: '10px', textAlign: 'right', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
-                      <th style={{ padding: '10px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
-                      <th style={{ padding: '10px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Ações</th>
+                    <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Data</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Descrição</th>
+                      <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Valor</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Parcelas</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Fatura</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -941,6 +1063,17 @@ function Cartoes() {
                           ) : (
                             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>À vista</span>
                           )}
+                        </td>
+                        <td style={{ padding: '10px', fontSize: '13px', textAlign: 'center' }}>
+                          <span style={{
+                            backgroundColor: 'rgba(159,122,234,0.15)',
+                            color: '#9f7aea',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px'
+                          }}>
+                            {getNomeMes(despesa.mesFatura || new Date(despesa.data).getMonth() + 1)}/{despesa.anoFatura || new Date(despesa.data).getFullYear()}
+                          </span>
                         </td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
                           <button

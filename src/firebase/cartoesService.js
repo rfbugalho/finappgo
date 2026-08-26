@@ -1,3 +1,4 @@
+// src/firebase/cartoesService.js
 import { 
   collection, 
   addDoc, 
@@ -94,21 +95,31 @@ export const excluirCartao = async (id) => {
 // DESPESAS DO CARTÃO
 // ==========================================
 
-export const buscarDespesasCartao = async (cartaoId) => {
+export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    const q = query(
+    let q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
       where('cartaoId', '==', cartaoId),
       orderBy('data', 'desc')
     )
+    
     const querySnapshot = await getDocs(q)
     const lista = []
     querySnapshot.forEach((doc) => {
-      lista.push({ id: doc.id, ...doc.data() })
+      const data = doc.data()
+      // Filtrar por mês/ano se especificado
+      if (mes && ano) {
+        const dataObj = new Date(data.data)
+        if (dataObj.getMonth() + 1 === mes && dataObj.getFullYear() === ano) {
+          lista.push({ id: doc.id, ...data })
+        }
+      } else {
+        lista.push({ id: doc.id, ...data })
+      }
     })
     return lista
   } catch (error) {
@@ -138,6 +149,8 @@ export const adicionarDespesaCartao = async (despesa) => {
       totalParcelas: totalParcelas,
       parcelaAtual: parcelaAtual,
       parcelasRestantes: totalParcelas - parcelaAtual,
+      mesFatura: despesa.mesFatura || new Date(despesa.data).getMonth() + 1,
+      anoFatura: despesa.anoFatura || new Date(despesa.data).getFullYear(),
       criadoEm: new Date().toISOString()
     })
 
