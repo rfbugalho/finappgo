@@ -181,9 +181,10 @@ export const transferirEntreContas = async (contaOrigemId, contaDestinoId, valor
     const origemData = origemDoc.data()
     const destinoData = destinoDoc.data()
 
-    // Verificar saldo disponível
-    if ((origemData.saldoAtual || 0) < valorNumero) {
-      throw new Error('Saldo insuficiente na conta de origem')
+    // Verificar saldo disponível com margem de erro (0.01)
+    const saldoDisponivel = origemData.saldoAtual || 0
+    if (saldoDisponivel < valorNumero - 0.01) {
+      throw new Error(`Saldo insuficiente na conta de origem. Disponível: R$ ${saldoDisponivel.toFixed(2)}`)
     }
 
     // Atualizar saldos
@@ -200,7 +201,7 @@ export const transferirEntreContas = async (contaOrigemId, contaDestinoId, valor
       atualizadoEm: new Date().toISOString()
     })
 
-    // Registrar transferência no histórico (coleção separada)
+    // Registrar transferência
     try {
       await addDoc(collection(db, 'transferencias'), {
         contaOrigemId: contaOrigemId,
