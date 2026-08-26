@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
 import { useConfig } from '../contexts/ConfigContext'
+import Notificacoes from './Notificacoes'
+import { buscarNotificacoes } from '../firebase/notificacoesService'
 
 // ============================================
 // MENUS PERSONALIZÁVEIS
@@ -63,6 +65,8 @@ const MENUS = [
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [notificacoesAbertas, setNotificacoesAbertas] = useState(false)
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
   const { config } = useConfig()
@@ -93,6 +97,20 @@ function Layout({ children }) {
       setSidebarOpen(false)
     }
   }, [location.pathname])
+
+  // Buscar notificações não lidas
+  useEffect(() => {
+    const carregarNotificacoes = async () => {
+      const dados = await buscarNotificacoes()
+      const naoLidas = dados.filter(n => !n.lido).length
+      setNotificacoesNaoLidas(naoLidas)
+    }
+    carregarNotificacoes()
+
+    // Recarregar a cada 30 segundos
+    const interval = setInterval(carregarNotificacoes, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const getPageTitle = () => {
     const allSubmenus = MENUS.flatMap(grupo => grupo.submenus)
@@ -362,27 +380,42 @@ function Layout({ children }) {
             gap: 'clamp(8px, 1.5vw, 20px)',
             flexWrap: 'wrap'
           }}>
-            <span style={{ 
-              fontSize: 'clamp(16px, 2vw, 20px)', 
-              cursor: 'pointer',
-              position: 'relative'
-            }}>
-              🔔
-              <span style={{
-                position: 'absolute',
-                top: '-5px',
-                right: '-5px',
-                backgroundColor: '#d94a4a',
-                color: '#fff',
-                fontSize: 'clamp(8px, 1vw, 10px)',
-                borderRadius: '50%',
-                padding: '2px 6px',
-                fontWeight: 'bold'
-              }}>
-                3
+            {/* NOTIFICAÇÕES */}
+            <div style={{ position: 'relative' }}>
+              <span 
+                onClick={() => setNotificacoesAbertas(!notificacoesAbertas)}
+                style={{ 
+                  fontSize: 'clamp(16px, 2vw, 20px)', 
+                  cursor: 'pointer',
+                  position: 'relative',
+                  display: 'inline-block'
+                }}
+              >
+                🔔
+                {notificacoesNaoLidas > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    backgroundColor: '#d94a4a',
+                    color: '#fff',
+                    fontSize: 'clamp(8px, 1vw, 10px)',
+                    borderRadius: '50%',
+                    padding: '2px 6px',
+                    fontWeight: 'bold',
+                    minWidth: '18px',
+                    textAlign: 'center'
+                  }}>
+                    {notificacoesNaoLidas}
+                  </span>
+                )}
               </span>
-            </span>
+              {notificacoesAbertas && (
+                <Notificacoes onClose={() => setNotificacoesAbertas(false)} />
+              )}
+            </div>
             
+            {/* USUÁRIO */}
             <span style={{ 
               color: config?.tema === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)',
               fontSize: 'clamp(10px, 1.5vw, 14px)',
@@ -400,6 +433,7 @@ function Layout({ children }) {
               </span>
             </span>
             
+            {/* BOTÃO SAIR */}
             <button
               onClick={handleLogout}
               style={{

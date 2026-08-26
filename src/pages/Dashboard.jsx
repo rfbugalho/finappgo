@@ -7,6 +7,7 @@ import { buscarLancamentos } from '../firebase/lancamentosService'
 import { buscarContas } from '../firebase/contasService'
 import { buscarCartoes } from '../firebase/cartoesService'
 import { buscarMetas } from '../firebase/metasService'
+import { gerarNotificacoesAutomaticas } from '../firebase/notificacoesService'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -83,8 +84,6 @@ function Dashboard() {
   // ==========================================
   // ESTADOS DOS INDICADORES AVANÇADOS
   // ==========================================
-  const [gastosPorMes, setGastosPorMes] = useState([])
-  const [receitasPorMes, setReceitasPorMes] = useState([])
   const [categoriaMaisCara, setCategoriaMaisCara] = useState(null)
   const [ticketMedio, setTicketMedio] = useState(0)
   const [previsaoGastos, setPrevisaoGastos] = useState(0)
@@ -171,7 +170,7 @@ function Dashboard() {
     setDespesasHoje(hojeDespesas)
     setValorTotalHoje(hojeDespesas.reduce((acc, item) => acc + item.valor, 0))
     
-    // Despesas dos próximos 7 dias (excluindo hoje)
+    // Despesas dos próximos 7 dias
     const proximosDias = despesasFiltradas.filter(item => 
       item.data > hojeStr && item.data <= proximos7DiasStr
     )
@@ -199,29 +198,7 @@ function Dashboard() {
     // INDICADORES AVANÇADOS
     // ==========================================
 
-    // 1. Gastos por Mês (últimos 6 meses)
-    const mesesLabels = []
-    const gastosMeses = []
-    const receitasMeses = []
-    for (let i = 5; i >= 0; i--) {
-      const data = new Date(anoAtual, mesAtual - i, 1)
-      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
-      mesesLabels.push(data.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }))
-      
-      const gastosMes = lancamentos
-        .filter(item => item.tipo === 'despesa' && item.data.startsWith(mesStr))
-        .reduce((acc, item) => acc + item.valor, 0)
-      gastosMeses.push(gastosMes)
-      
-      const receitasMes = lancamentos
-        .filter(item => item.tipo === 'receita' && item.data.startsWith(mesStr))
-        .reduce((acc, item) => acc + item.valor, 0)
-      receitasMeses.push(receitasMes)
-    }
-    setGastosPorMes(gastosMeses)
-    setReceitasPorMes(receitasMeses)
-
-    // 2. Categoria Mais Cara
+    // 1. Categoria Mais Cara
     if (dadosCategorias.length > 0) {
       const maisCara = dadosCategorias.reduce((max, cat) => 
         cat.valor > max.valor ? cat : max
@@ -229,16 +206,16 @@ function Dashboard() {
       setCategoriaMaisCara(maisCara)
     }
 
-    // 3. Ranking de Categorias (Top 5)
+    // 2. Ranking de Categorias (Top 5)
     const ranking = [...dadosCategorias].sort((a, b) => b.valor - a.valor).slice(0, 5)
     setRankingCategorias(ranking)
 
-    // 4. Ticket Médio
+    // 3. Ticket Médio
     const totalDespesasMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     const qtdDespesas = despesasFiltradas.length
     setTicketMedio(qtdDespesas > 0 ? totalDespesasMes / qtdDespesas : 0)
 
-    // 5. Previsão de Gastos (média dos últimos 3 meses)
+    // 4. Previsão de Gastos
     const ultimos3Meses = []
     for (let i = 1; i <= 3; i++) {
       let mes = filtros.mes - i
@@ -261,12 +238,12 @@ function Dashboard() {
     const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.filter(m => m > 0).length || 0
     setPrevisaoGastos(media3Meses * 1.1)
 
-    // 6. Velocidade de Gastos
+    // 5. Velocidade de Gastos
     const diasNoMes = new Date(filtros.ano, filtros.mes, 0).getDate()
     const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
 
-    // 7. Top 5 Despesas do período
+    // 6. Top 5 Despesas do período
     const top5 = despesasFiltradas
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
@@ -282,6 +259,22 @@ function Dashboard() {
       aplicarFiltros()
     }
   }, [lancamentos, filtros, carregando])
+
+  // ==========================================
+  // GERAR NOTIFICAÇÕES AUTOMÁTICAS
+  // ==========================================
+  useEffect(() => {
+    const gerarNotificacoes = async () => {
+      if (!carregando && lancamentos.length > 0) {
+        try {
+          await gerarNotificacoesAutomaticas(lancamentos, cartoes, metas, [])
+        } catch (error) {
+          console.error('Erro ao gerar notificações:', error)
+        }
+      }
+    }
+    gerarNotificacoes()
+  }, [lancamentos, cartoes, metas, carregando])
 
   // ==========================================
   // FUNÇÕES DOS FILTROS
