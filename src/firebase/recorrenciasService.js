@@ -54,7 +54,6 @@ export const adicionarRecorrencia = async (recorrencia) => {
       recorrencia.diaVencimento
     )
 
-    // Verificar se a recorrência já está dentro do período
     const status = verificarStatus(proximoVencimento, recorrencia.dataTermino)
 
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
@@ -117,11 +116,8 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
     if (!recorrenciaDoc.exists()) return
 
     const recorrencia = recorrenciaDoc.data()
-
-    // Verificar se a recorrência está dentro do período
     const hoje = new Date().toISOString().split('T')[0]
     
-    // Se tiver data de término e já passou, não gerar
     if (recorrencia.dataTermino && recorrencia.dataTermino < hoje) {
       await updateDoc(recorrenciaRef, {
         status: 'concluida',
@@ -154,7 +150,6 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
       ano: new Date().getFullYear()
     })
 
-    // Calcular próximo vencimento
     const proximoVencimento = calcularProximoVencimento(
       recorrencia.dataInicio,
       recorrencia.periodicidade,
@@ -162,7 +157,6 @@ export const gerarLancamentoRecorrente = async (recorrenciaId) => {
       true
     )
 
-    // Verificar se a recorrência ainda está dentro do período
     const novoStatus = verificarStatus(proximoVencimento, recorrencia.dataTermino)
 
     await updateDoc(recorrenciaRef, {
@@ -213,12 +207,10 @@ export const calcularProximoVencimento = (dataInicio, periodicidade, diaVencimen
 export const verificarStatus = (proximoVencimento, dataTermino) => {
   const hoje = new Date().toISOString().split('T')[0]
   
-  // Se tiver data de término e já passou
   if (dataTermino && dataTermino < hoje) {
     return 'concluida'
   }
   
-  // Se o próximo vencimento for maior que a data de término
   if (dataTermino && proximoVencimento > dataTermino) {
     return 'concluida'
   }
@@ -244,7 +236,6 @@ export const processarRecorrencias = async () => {
     for (const doc of querySnapshot.docs) {
       const recorrencia = doc.data()
       
-      // Verificar se já foi gerado este mês
       const logQuery = query(
         collection(db, LOG_COLLECTION),
         where('recorrenciaId', '==', doc.id),

@@ -68,10 +68,8 @@ function Recorrencias() {
       await carregarCategorias()
       await carregarContas()
       
-      // Processar recorrências automaticamente ao carregar
       try {
         await processarRecorrencias()
-        // Recarregar após processar
         await carregarRecorrencias()
       } catch (error) {
         console.error('Erro ao processar recorrências:', error)
@@ -164,7 +162,6 @@ function Recorrencias() {
       
       await carregarRecorrencias()
       
-      // Processar recorrências após salvar
       try {
         await processarRecorrencias()
         await carregarRecorrencias()
@@ -180,13 +177,13 @@ function Recorrencias() {
   }
 
   // ==========================================
-  // FUNÇÃO EXCLUIR CORRIGIDA
+  // FUNÇÃO EXCLUIR CORRIGIDA - USANDO O NOME DO ESTADO
   // ==========================================
-  const excluirRecorrencia = async (id, nome) => {
+  const handleExcluir = (id, nome) => {
     if (window.confirm(`Excluir a recorrência "${nome || 'selecionada'}"?`)) {
       try {
-        await excluirRecorrencia(id)
-        await carregarRecorrencias()
+        excluirRecorrencia(id)
+        carregarRecorrencias()
       } catch (error) {
         alert('Erro ao excluir recorrência. Tente novamente.')
         console.error(error)
@@ -444,7 +441,7 @@ function Recorrencias() {
                   ✏️
                 </button>
                 <button
-                  onClick={() => excluirRecorrencia(recorrencia.id, recorrencia.nome)}
+                  onClick={() => handleExcluir(recorrencia.id, recorrencia.nome)}
                   style={{
                     flex: 1,
                     backgroundColor: 'rgba(217,74,74,0.2)',
