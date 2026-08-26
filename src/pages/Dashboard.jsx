@@ -181,16 +181,29 @@ function Dashboard() {
     )
     setDespesasProximosDias(proximosDias)
 
-    // Categorias
+    // ==========================================
+    // CATEGORIAS - CORRIGIDO
+    // ==========================================
     const catMap = {}
     despesasFiltradas.forEach(item => {
       const cat = item.categoria || 'Sem categoria'
       if (!catMap[cat]) catMap[cat] = 0
       catMap[cat] += item.valor
     })
-    setDadosCategorias(Object.entries(catMap).map(([nome, valor]) => ({ nome, valor })))
+    
+    const categoriasArray = Object.entries(catMap).map(([nome, valor]) => ({ 
+      nome, 
+      valor: parseFloat(valor.toFixed(2))
+    }))
+    
+    // Ordenar por valor (maior para menor)
+    categoriasArray.sort((a, b) => b.valor - a.valor)
+    
+    setDadosCategorias(categoriasArray)
 
-    // Subcategorias
+    // ==========================================
+    // SUBCATEGORIAS
+    // ==========================================
     const subMap = {}
     despesasFiltradas.forEach(item => {
       const sub = item.subcategoria || 'Sem subcategoria'
@@ -204,17 +217,15 @@ function Dashboard() {
     // ==========================================
 
     // 1. Categoria Mais Cara
-    if (dadosCategorias.length > 0) {
-      const maisCara = dadosCategorias.reduce((max, cat) => 
-        cat.valor > max.valor ? cat : max
-      )
+    if (categoriasArray.length > 0) {
+      const maisCara = categoriasArray[0] // Já está ordenado
       setCategoriaMaisCara(maisCara)
+    } else {
+      setCategoriaMaisCara(null)
     }
 
-    // 2. Ranking de Categorias (Top 5 por valor de gastos)
-    const ranking = [...dadosCategorias]
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 5)
+    // 2. Ranking de Categorias (Top 5)
+    const ranking = categoriasArray.slice(0, 5)
     setRankingCategorias(ranking)
 
     // 3. Ticket Médio
@@ -250,10 +261,14 @@ function Dashboard() {
     const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
 
-    // 6. TOP 5 Despesas (MAIORES valores)
+    // 6. Top 5 Despesas do período (MAIORES VALORES)
     const top5 = despesasFiltradas
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
+      .map(item => ({
+        ...item,
+        valor: parseFloat(item.valor.toFixed(2))
+      }))
     setTop5Despesas(top5)
   }
 
@@ -903,7 +918,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          TOP 5 DESPESAS - CORRIGIDO (MAIORES VALORES)
+          TOP 5 DESPESAS DO PERÍODO (MAIORES VALORES)
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
