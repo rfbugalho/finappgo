@@ -126,3 +126,77 @@ export const excluirConta = async (id) => {
     throw error
   }
 }
+// ==========================================
+// TRANSFERÊNCIA ENTRE CONTAS
+// ==========================================
+
+export const transferirEntreContas = async (contaOrigemId, contaDestinoId, valor, descricao = '') => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const valorNumero = parseFloat(valor)
+    if (isNaN(valorNumero) || valorNumero <= 0) {
+      throw new Error('Valor inválido')
+    }
+
+    if (contaOrigemId === contaDestinoId) {
+      throw new Error('Não é possível transferir para a mesma conta')
+    }
+
+    // Buscar contas
+    const origemRef = doc(db, COLLECTION_NAME, contaOrigemId)
+    const destinoRef = doc(db, COLLECTION_NAME, contaDestinoId)
+    
+    const origemDoc = await getDoc(origemRef)
+    const destinoDoc = await getDoc(destinoRef)
+    
+    if (!origemDoc.exists() || !destinoDoc.exists()) {
+      throw new Error('Conta não encontrada')
+    }
+
+    const origemData = origemDoc.data()
+    const destinoData = destinoDoc.data()
+
+    // Verificar saldo disponível
+    if ((origemData.saldoAtual || 0) < valorNumero) {
+      throw new Error('Saldo insuficiente na conta de origem')
+    }
+
+    // Atualizar saldos
+    const novoSaldoOrigem = (origemData.saldoAtual || 0) - valorNumero
+    const novoSaldoDestino = (destinoData.saldoAtual || 0) + valorNumero
+
+    await updateDoc(origemRef, {
+      saldoAtual: novoSaldoOrigem,
+      atualizadoEm: new Date().toISOString()
+    })
+
+    await updateDoc(destinoRef, {
+      saldoAtual: novoSaldoDestino,
+      atualizadoEm: new Date().toISOString()
+    })
+
+    // Registrar transferência (opcional - criar no Firestore)
+    const transferencia = {
+      contaOrigemId: contaOrigemId,
+      contaDestinoId: contaDestinoId,
+      valor: valorNumero,
+      descricao: descricao || 'Transferência entre contas',
+      userId: user.uid,
+      data: new Date().toISOString().split('T')[0],
+      criadoEm: new Date().toISOString()
+    }
+
+    // Salvar no histórico (opcional)
+    await addDoc(collection(db, 'transferencias'), transferencia)
+
+    return {
+      origem: { id: contaOrigemId, saldoAtual: novoSaldoOrigem },
+      destino: { id: contaDestinoId, saldoAtual: novoSaldoDestino }
+    }
+  } catch (error) {
+    console.error('Erro ao transferir:', error)
+    throw error
+  }
+}

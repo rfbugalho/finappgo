@@ -1,46 +1,53 @@
-// src/pages/Contas.jsx
 import React, { useState, useEffect } from 'react'
 import { 
   buscarContas, 
   adicionarConta, 
   atualizarConta, 
-  excluirConta 
+  excluirConta,
+  transferirEntreContas
 } from '../firebase/contasService'
+import { formatarMoeda } from '../utils/formatters'
 
-// Lista de bancos com emojis e cores
 const BANCOS = [
-  { nome: 'Nubank', emoji: '🟣', cor: '#8B5CF6' },
-  { nome: 'Itaú', emoji: '🟠', cor: '#EC7000' },
-  { nome: 'Bradesco', emoji: '🔴', cor: '#CC092F' },
-  { nome: 'Santander', emoji: '🔵', cor: '#EC0000' },
-  { nome: 'Inter', emoji: '🟧', cor: '#FF7A00' },
-  { nome: 'Inter Empresa', emoji: '🟧', cor: '#0b6e14ff' },
-  { nome: 'C6 Bank', emoji: '⬛', cor: '#1A1A1A' },
-  { nome: 'PicPay', emoji: '🟩', cor: '#21C25E' },
-  { nome: 'Mercado Pago', emoji: '🟦', cor: '#00AEEF' },
-  { nome: 'XP Investimentos', emoji: '🟢', cor: '#0A7E3F' },
-  { nome: 'Outro', emoji: '🏦', cor: '#6B7280' }
+  { nome: 'Nubank', emoji: '🟣' },
+  { nome: 'Itaú', emoji: '🟠' },
+  { nome: 'Bradesco', emoji: '🔴' },
+  { nome: 'Santander', emoji: '🔵' },
+  { nome: 'Caixa', emoji: '🟡' },
+  { nome: 'Banco do Brasil', emoji: '🟢' },
+  { nome: 'Inter', emoji: '🟧' },
+  { nome: 'C6 Bank', emoji: '⬛' },
+  { nome: 'PicPay', emoji: '🟩' },
+  { nome: 'Mercado Pago', emoji: '🟦' },
+  { nome: 'Outro', emoji: '🏦' }
 ]
 
 function Contas() {
   const [contas, setContas] = useState([])
   const [carregando, setCarregando] = useState(true)
+
+  // Modal Conta
   const [modalAberto, setModalAberto] = useState(false)
   const [modalEdicao, setModalEdicao] = useState(false)
-  
   const [formData, setFormData] = useState({
     id: null,
     instituicao: '',
-    nomePersonalizado: '',
     tipo: 'corrente',
     logo: '🏦',
-    cor: '#6B7280',
     saldoInicial: '',
     dataAbertura: new Date().toISOString().split('T')[0]
   })
 
-  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1)
-  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear())
+  // Modal Transferência
+  const [modalTransferenciaAberto, setModalTransferenciaAberto] = useState(false)
+  const [transferencia, setTransferencia] = useState({
+    contaOrigemId: '',
+    contaDestinoId: '',
+    valor: '',
+    descricao: ''
+  })
+  const [erroTransferencia, setErroTransferencia] = useState('')
+  const [carregandoTransferencia, setCarregandoTransferencia] = useState(false)
 
   const carregarContas = async () => {
     setCarregando(true)
@@ -53,14 +60,15 @@ function Contas() {
     carregarContas()
   }, [])
 
+  // ==========================================
+  // FUNÇÕES DA CONTA
+  // ==========================================
   const abrirModalNovo = () => {
     setFormData({
       id: null,
       instituicao: '',
-      nomePersonalizado: '',
       tipo: 'corrente',
       logo: '🏦',
-      cor: '#6B7280',
       saldoInicial: '',
       dataAbertura: new Date().toISOString().split('T')[0]
     })
@@ -71,49 +79,28 @@ function Contas() {
   const abrirModalEditar = (conta) => {
     setFormData({
       id: conta.id,
-      instituicao: conta.instituicao || '',
-      nomePersonalizado: conta.nomePersonalizado || '',
-      tipo: conta.tipo || 'corrente',
+      instituicao: conta.instituicao,
+      tipo: conta.tipo,
       logo: conta.logo || '🏦',
-      cor: conta.cor || '#6B7280',
-      saldoInicial: conta.saldoInicial || '',
-      dataAbertura: conta.dataAbertura || new Date().toISOString().split('T')[0]
+      saldoInicial: conta.saldoInicial,
+      dataAbertura: conta.dataAbertura
     })
     setModalEdicao(true)
     setModalAberto(true)
   }
 
-  const fecharModal = () => {
-    setModalAberto(false)
-  }
-
-  const handleBancoChange = (valor) => {
-    const banco = BANCOS.find(b => b.nome === valor)
-    setFormData({ 
-      ...formData, 
-      instituicao: valor,
-      logo: banco?.emoji || '🏦',
-      cor: banco?.cor || '#6B7280'
-    })
-  }
-
   const salvarConta = async (e) => {
     e.preventDefault()
     
-    const nomeExibicao = formData.nomePersonalizado?.trim() || formData.instituicao
-
-    if (!nomeExibicao) {
-      alert('Digite o nome da instituição ou um nome personalizado.')
+    if (!formData.instituicao.trim()) {
+      alert('Digite o nome da instituição.')
       return
     }
 
     const dadosParaSalvar = {
-      instituicao: formData.instituicao,
-      nomePersonalizado: formData.nomePersonalizado?.trim() || '',
-      nomeExibicao: nomeExibicao,
+      instituicao: formData.instituicao.trim(),
       tipo: formData.tipo,
       logo: formData.logo,
-      cor: formData.cor,
       saldoInicial: parseFloat(formData.saldoInicial) || 0,
       dataAbertura: formData.dataAbertura,
       status: 'ativo'
@@ -127,21 +114,21 @@ function Contas() {
       }
       
       await carregarContas()
-      fecharModal()
+      setModalAberto(false)
     } catch (error) {
       alert('Erro ao salvar conta.')
       console.error(error)
     }
   }
 
-  const handleExcluir = async (id, nome) => {
+  const excluirConta = async (id, nome) => {
     if (window.confirm(`Excluir a conta "${nome}"?`)) {
       await excluirConta(id)
       await carregarContas()
     }
   }
 
-  const handleInativar = async (id, statusAtual) => {
+  const inativarConta = async (id, statusAtual) => {
     const novoStatus = statusAtual === 'ativo' ? 'inativo' : 'ativo'
     const confirmar = window.confirm(
       `${novoStatus === 'ativo' ? 'Ativar' : 'Inativar'} esta conta?`
@@ -153,17 +140,67 @@ function Contas() {
     }
   }
 
-  const formatarMoeda = (valor) => {
-    return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
+  // ==========================================
+  // FUNÇÕES DE TRANSFERÊNCIA
+  // ==========================================
+  const abrirModalTransferencia = () => {
+    setTransferencia({
+      contaOrigemId: '',
+      contaDestinoId: '',
+      valor: '',
+      descricao: ''
+    })
+    setErroTransferencia('')
+    setModalTransferenciaAberto(true)
   }
 
-  const contasFiltradas = contas.filter(conta => {
-    if (!conta.dataAbertura) return true
-    const data = new Date(conta.dataAbertura)
-    return data.getMonth() + 1 === filtroMes && data.getFullYear() === filtroAno
-  })
+  const realizarTransferencia = async (e) => {
+    e.preventDefault()
+    setErroTransferencia('')
+    setCarregandoTransferencia(true)
 
+    const valorNumero = parseFloat(transferencia.valor)
+    if (isNaN(valorNumero) || valorNumero <= 0) {
+      setErroTransferencia('Digite um valor válido.')
+      setCarregandoTransferencia(false)
+      return
+    }
+
+    if (!transferencia.contaOrigemId || !transferencia.contaDestinoId) {
+      setErroTransferencia('Selecione as contas de origem e destino.')
+      setCarregandoTransferencia(false)
+      return
+    }
+
+    if (transferencia.contaOrigemId === transferencia.contaDestinoId) {
+      setErroTransferencia('Não é possível transferir para a mesma conta.')
+      setCarregandoTransferencia(false)
+      return
+    }
+
+    try {
+      await transferirEntreContas(
+        transferencia.contaOrigemId,
+        transferencia.contaDestinoId,
+        valorNumero,
+        transferencia.descricao
+      )
+      
+      await carregarContas()
+      setModalTransferenciaAberto(false)
+      alert('Transferência realizada com sucesso!')
+    } catch (error) {
+      setErroTransferencia(error.message || 'Erro ao realizar transferência.')
+    }
+
+    setCarregandoTransferencia(false)
+  }
+
+  // ==========================================
+  // CALCULAR SALDO TOTAL
+  // ==========================================
   const saldoTotal = contas.reduce((acc, conta) => acc + (conta.saldoAtual || 0), 0)
+  const contasAtivas = contas.filter(c => c.status === 'ativo')
 
   return (
     <div>
@@ -172,7 +209,9 @@ function Contas() {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: '30px' 
+        marginBottom: '30px',
+        flexWrap: 'wrap',
+        gap: '10px'
       }}>
         <div>
           <h2 style={{ fontSize: '24px', color: '#ffffff', marginBottom: '4px' }}>
@@ -182,77 +221,43 @@ function Contas() {
             {carregando ? 'Carregando...' : `${contas.length} conta(s) cadastrada(s) · Saldo Total: ${formatarMoeda(saldoTotal)}`}
           </p>
         </div>
-        <button
-          onClick={abrirModalNovo}
-          style={{
-            backgroundColor: '#2d8a4e',
-            color: '#fff',
-            border: 'none',
-            padding: '10px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          ➕ Nova Conta
-        </button>
-      </div>
-
-      {/* FILTROS */}
-      <div style={{
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        padding: '15px 20px',
-        borderRadius: '10px',
-        marginBottom: '20px',
-        display: 'flex',
-        gap: '20px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        border: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>Mês:</label>
-          <select
-            value={filtroMes}
-            onChange={(e) => setFiltroMes(parseInt(e.target.value))}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={abrirModalTransferencia}
             style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              color: '#fff',
-              fontSize: '13px'
+              backgroundColor: 'rgba(58,122,189,0.2)',
+              color: '#3a7abd',
+              border: '1px solid rgba(58,122,189,0.2)',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
-            {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-              <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
-                {new Date(2024, m-1).toLocaleString('pt-BR', { month: 'long' })}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>Ano:</label>
-          <select
-            value={filtroAno}
-            onChange={(e) => setFiltroAno(parseInt(e.target.value))}
+            🔄 Transferir
+          </button>
+          <button
+            onClick={abrirModalNovo}
             style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              backgroundColor: 'rgba(255,255,255,0.05)',
+              backgroundColor: '#2d8a4e',
               color: '#fff',
-              fontSize: '13px'
+              border: 'none',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
-            {[2024, 2025, 2026, 2027].map(a => (
-              <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
-            ))}
-          </select>
+            ➕ Nova Conta
+          </button>
         </div>
       </div>
 
@@ -281,7 +286,7 @@ function Contas() {
             </p>
           </div>
         ) : (
-          contasFiltradas.map(conta => (
+          contas.map(conta => (
             <div key={conta.id} style={{
               backgroundColor: 'rgba(255,255,255,0.05)',
               padding: '20px',
@@ -291,12 +296,11 @@ function Contas() {
               transition: 'all 0.3s'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                {/* Logo com fundo colorido */}
                 <div style={{
                   width: '48px',
                   height: '48px',
                   borderRadius: '12px',
-                  backgroundColor: conta.cor || '#6B7280',
+                  backgroundColor: '#1a2b4a',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -306,29 +310,16 @@ function Contas() {
                   {conta.logo || '🏦'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{ 
-                    color: '#fff', 
-                    fontSize: '16px', 
-                    fontWeight: '600', 
-                    margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
+                  <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '600', margin: '0' }}>
                     {conta.nomeExibicao || conta.instituicao}
                   </h3>
                   <p style={{ 
                     color: 'rgba(255,255,255,0.3)', 
                     fontSize: '12px',
                     textTransform: 'capitalize',
-                    margin: 0
+                    margin: '2px 0 0 0'
                   }}>
                     {conta.tipo || 'Conta Corrente'}
-                    {conta.instituicao && conta.instituicao !== (conta.nomeExibicao || conta.instituicao) && (
-                      <span style={{ color: 'rgba(255,255,255,0.2)', marginLeft: '6px' }}>
-                        ({conta.instituicao})
-                      </span>
-                    )}
                   </p>
                 </div>
                 {conta.status === 'inativo' && (
@@ -362,7 +353,7 @@ function Contas() {
                     Saldo Inicial: {formatarMoeda(conta.saldoInicial || 0)}
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>
-                    {conta.dataAbertura}
+                    {conta.dataAbertura || '-'}
                   </span>
                 </div>
               </div>
@@ -377,21 +368,22 @@ function Contas() {
                 <button
                   onClick={() => abrirModalEditar(conta)}
                   style={{
+                    flex: 1,
                     backgroundColor: 'rgba(255,255,255,0.05)',
                     color: 'rgba(255,255,255,0.6)',
                     border: 'none',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '12px',
-                    flex: 1
+                    fontSize: '12px'
                   }}
                 >
                   ✏️ Editar
                 </button>
                 <button
-                  onClick={() => handleInativar(conta.id, conta.status)}
+                  onClick={() => inativarConta(conta.id, conta.status)}
                   style={{
+                    flex: 1,
                     backgroundColor: conta.status === 'ativo' 
                       ? 'rgba(217,74,74,0.2)' 
                       : 'rgba(45,138,78,0.2)',
@@ -400,15 +392,15 @@ function Contas() {
                     padding: '6px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '12px',
-                    flex: 1
+                    fontSize: '12px'
                   }}
                 >
                   {conta.status === 'ativo' ? '🔒 Inativar' : '🔓 Ativar'}
                 </button>
                 <button
-                  onClick={() => handleExcluir(conta.id, conta.nomeExibicao || conta.instituicao)}
+                  onClick={() => excluirConta(conta.id, conta.nomeExibicao || conta.instituicao)}
                   style={{
+                    flex: 0.5,
                     backgroundColor: 'rgba(217,74,74,0.2)',
                     color: '#d94a4a',
                     border: 'none',
@@ -427,7 +419,7 @@ function Contas() {
       </div>
 
       {/* ==========================================
-          MODAL - NOVA/EDITAR CONTA
+          MODAL - CONTA
           ========================================== */}
       {modalAberto && (
         <div style={{
@@ -442,7 +434,7 @@ function Contas() {
           alignItems: 'center',
           zIndex: 1000,
           backdropFilter: 'blur(4px)'
-        }} onClick={fecharModal}>
+        }} onClick={() => setModalAberto(false)}>
           <div style={{
             backgroundColor: '#1a2b4a',
             padding: '30px',
@@ -461,14 +453,20 @@ function Contas() {
             </p>
 
             <form onSubmit={salvarConta}>
-              {/* Instituição (seleção) */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   🏦 Instituição
                 </label>
                 <select
                   value={formData.instituicao}
-                  onChange={(e) => handleBancoChange(e.target.value)}
+                  onChange={(e) => {
+                    const banco = BANCOS.find(b => b.nome === e.target.value)
+                    setFormData({ 
+                      ...formData, 
+                      instituicao: e.target.value,
+                      logo: banco?.emoji || '🏦'
+                    })
+                  }}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -489,66 +487,6 @@ function Contas() {
                 </select>
               </div>
 
-              {/* Nome Personalizado */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  ✏️ Nome Personalizado (opcional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Conta do Nubank, Poupança do Itaú..."
-                  value={formData.nomePersonalizado}
-                  onChange={(e) => setFormData({ ...formData, nomePersonalizado: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    color: '#ffffff'
-                  }}
-                />
-                <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '4px' }}>
-                  Deixe em branco para usar o nome da instituição
-                </p>
-              </div>
-
-              {/* Logo (visualização) */}
-              {formData.logo && (
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '16px',
-                  padding: '12px',
-                  backgroundColor: 'rgba(255,255,255,0.03)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
-                    backgroundColor: formData.cor || '#6B7280',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '24px'
-                  }}>
-                    {formData.logo}
-                  </div>
-                  <div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', margin: 0 }}>
-                      Pré-visualização do logo
-                    </p>
-                    <p style={{ color: '#fff', fontSize: '14px', margin: 0 }}>
-                      {formData.nomePersonalizado || formData.instituicao || 'Nome da conta'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Tipo */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   📋 Tipo de Conta
@@ -566,14 +504,13 @@ function Contas() {
                     color: '#ffffff'
                   }}
                 >
-                  <option value="corrente" style={{ backgroundColor: '#1a2b4a' }}>💳 Conta Corrente</option>
-                  <option value="poupanca" style={{ backgroundColor: '#1a2b4a' }}>🏦 Poupança</option>
-                  <option value="salario" style={{ backgroundColor: '#1a2b4a' }}>💰 Conta Salário</option>
-                  <option value="investimento" style={{ backgroundColor: '#1a2b4a' }}>📈 Investimento</option>
+                  <option value="corrente">💳 Conta Corrente</option>
+                  <option value="poupanca">🏦 Poupança</option>
+                  <option value="salario">💰 Conta Salário</option>
+                  <option value="investimento">📈 Investimento</option>
                 </select>
               </div>
 
-              {/* Saldo Inicial */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   💰 Saldo Inicial (R$)
@@ -596,7 +533,6 @@ function Contas() {
                 />
               </div>
 
-              {/* Data de Abertura */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   📅 Data de Abertura
@@ -621,7 +557,7 @@ function Contas() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
-                  onClick={fecharModal}
+                  onClick={() => setModalAberto(false)}
                   style={{
                     flex: 1,
                     padding: '12px',
@@ -651,6 +587,193 @@ function Contas() {
                   }}
                 >
                   {modalEdicao ? '💾 Atualizar' : '➕ Adicionar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL - TRANSFERÊNCIA
+          ========================================== */}
+      {modalTransferenciaAberto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }} onClick={() => setModalTransferenciaAberto(false)}>
+          <div style={{
+            backgroundColor: '#1a2b4a',
+            padding: '30px',
+            borderRadius: '16px',
+            maxWidth: '500px',
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.08)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '20px', color: '#ffffff', marginBottom: '4px' }}>
+              🔄 Transferência entre Contas
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', marginBottom: '20px' }}>
+              Mova dinheiro de uma conta para outra
+            </p>
+
+            {erroTransferencia && (
+              <div style={{
+                backgroundColor: 'rgba(217,74,74,0.2)',
+                border: '1px solid #d94a4a',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px',
+                color: '#d94a4a',
+                fontSize: '14px',
+                textAlign: 'center'
+              }}>
+                {erroTransferencia}
+              </div>
+            )}
+
+            <form onSubmit={realizarTransferencia}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📤 Conta de Origem
+                </label>
+                <select
+                  value={transferencia.contaOrigemId}
+                  onChange={(e) => setTransferencia({ ...transferencia, contaOrigemId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                  required
+                >
+                  <option value="">Selecione a conta de origem</option>
+                  {contas.filter(c => c.status === 'ativo').map(conta => (
+                    <option key={conta.id} value={conta.id} style={{ backgroundColor: '#1a2b4a' }}>
+                      {conta.nomeExibicao || conta.instituicao} - {formatarMoeda(conta.saldoAtual || 0)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📥 Conta de Destino
+                </label>
+                <select
+                  value={transferencia.contaDestinoId}
+                  onChange={(e) => setTransferencia({ ...transferencia, contaDestinoId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                  required
+                >
+                  <option value="">Selecione a conta de destino</option>
+                  {contas.filter(c => c.status === 'ativo').map(conta => (
+                    <option key={conta.id} value={conta.id} style={{ backgroundColor: '#1a2b4a' }}>
+                      {conta.nomeExibicao || conta.instituicao}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  💰 Valor (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={transferencia.valor}
+                  onChange={(e) => setTransferencia({ ...transferencia, valor: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📝 Descrição (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Transferência para investimentos"
+                  value={transferencia.descricao}
+                  onChange={(e) => setTransferencia({ ...transferencia, descricao: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalTransferenciaAberto(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.6)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={carregandoTransferencia}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: carregandoTransferencia ? 'rgba(255,255,255,0.1)' : '#2d8a4e',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: carregandoTransferencia ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  {carregandoTransferencia ? '🔄 Processando...' : '🔄 Transferir'}
                 </button>
               </div>
             </form>
