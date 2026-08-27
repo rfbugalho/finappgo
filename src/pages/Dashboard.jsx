@@ -251,23 +251,18 @@ function Dashboard() {
     // INTELIGÊNCIA FINANCEIRA
     // ==========================================
     
-    // 1. Previsão de Gastos
     const prev = calcularPrevisaoGastos(lancamentos)
     setPrevisao(prev)
 
-    // 2. Score de Saúde Financeira
     const score = calcularScoreSaudeFinanceira(lancamentos, contas, cartoes, metas)
     setScoreSaude(score)
 
-    // 3. Sugestões de Economia
     const sugestoesGeradas = gerarSugestoesEconomia(lancamentos)
     setSugestoes(sugestoesGeradas)
 
-    // 4. Orçamento
     const orc = calcularOrcamento(lancamentos, prev.previsao)
     setOrcamento(orc)
 
-    // 5. Comparativo Mensal (últimos 6 meses)
     const comparativo = []
     for (let i = 5; i >= 0; i--) {
       const data = new Date(filtros.ano, filtros.mes - 1 - i, 1)
@@ -515,69 +510,97 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          SCORE DE SAÚDE FINANCEIRA
+          SCORE DE SAÚDE FINANCEIRA (CARD VISUAL)
           ========================================== */}
       {scoreSaude && (
         <div style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
+          backgroundColor: 'rgba(255,255,255,0.05)',
           padding: '20px',
           borderRadius: '12px',
-          border: '1px solid rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.08)',
           marginBottom: '20px',
-          position: 'relative',
-          overflow: 'hidden'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '16px'
         }}>
           <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: `${scoreSaude.score}%`,
-            height: '100%',
-            backgroundColor: `${scoreSaude.cor}15`,
-            transition: 'width 1s ease'
-          }} />
-          
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div>
-                <h3 style={{ color: '#ffffff', fontSize: '18px', margin: 0 }}>
-                  🩺 Saúde Financeira
-                </h3>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '4px 0 0 0' }}>
-                  {scoreSaude.detalhes.join(' · ')}
-                </p>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <span style={{
-                  fontSize: '36px',
-                  fontWeight: '700',
-                  color: scoreSaude.cor
-                }}>
-                  {scoreSaude.score}
-                </span>
-                <span style={{
-                  fontSize: '18px',
-                  color: 'rgba(255,255,255,0.3)',
-                  marginLeft: '4px'
-                }}>
-                  /100
-                </span>
-                <p style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: scoreSaude.cor,
-                  margin: 0
-                }}>
-                  {scoreSaude.nivel}
-                </p>
-              </div>
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              backgroundColor: `${scoreSaude.cor}22`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: `3px solid ${scoreSaude.cor}`
+            }}>
+              <span style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: scoreSaude.cor
+              }}>
+                {scoreSaude.score}
+              </span>
+              <span style={{
+                fontSize: '10px',
+                color: 'rgba(255,255,255,0.3)'
+              }}>
+                /100
+              </span>
             </div>
+            <div>
+              <p style={{ color: '#fff', fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                🩺 Saúde Financeira
+              </p>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: scoreSaude.cor,
+                margin: '2px 0 0 0'
+              }}>
+                {scoreSaude.nivel}
+              </p>
+            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px',
+            alignItems: 'center'
+          }}>
+            {scoreSaude.detalhes.slice(0, 4).map((detalhe, index) => (
+              <span key={index} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                color: 'rgba(255,255,255,0.6)'
+              }}>
+                {detalhe}
+              </span>
+            ))}
+            {scoreSaude.detalhes.length > 4 && (
+              <span style={{
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                color: 'rgba(255,255,255,0.3)'
+              }}>
+                +{scoreSaude.detalhes.length - 4}
+              </span>
+            )}
           </div>
         </div>
       )}
 
       {/* ==========================================
-          PREVISÃO E ORÇAMENTO
+          PREVISÃO E ORÇAMENTO (CARDS VISUAIS)
           ========================================== */}
       {previsao && orcamento && (
         <div style={{
@@ -586,72 +609,135 @@ function Dashboard() {
           gap: '12px',
           marginBottom: '20px'
         }}>
+          {/* Card: Previsão */}
           <div style={{
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            padding: '15px',
-            borderRadius: '10px',
-            border: '1px solid rgba(255,255,255,0.05)'
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-              📈 Previsão de Gastos
-            </p>
-            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>📈</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Previsão de Gastos
+              </span>
+            </div>
+            <p style={{ color: '#fff', fontSize: '24px', fontWeight: '700', margin: 0 }}>
               {formatarMoeda(previsao.previsao)}
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '2px 0 0 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', margin: '4px 0 0 0' }}>
               Baseado nos últimos {previsao.mesesAnalisados} meses
             </p>
           </div>
 
+          {/* Card: Orçamento */}
           <div style={{
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            padding: '15px',
-            borderRadius: '10px',
-            border: `1px solid ${orcamento.cor}33`
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            border: `1px solid ${orcamento.cor}33`,
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-              📊 Orçamento (vs Previsão)
-            </p>
-            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>📊</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Orçamento (vs Previsão)
+              </span>
+            </div>
+            <p style={{ color: '#fff', fontSize: '24px', fontWeight: '700', margin: 0 }}>
               {formatarMoeda(orcamento.gastoReal)}
             </p>
-            <p style={{ 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <div style={{
+                flex: 1,
+                height: '6px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${Math.min(orcamento.percentual, 100)}%`,
+                  height: '100%',
+                  backgroundColor: orcamento.cor,
+                  borderRadius: '3px',
+                  transition: 'width 0.5s ease'
+                }} />
+              </div>
+              <span style={{
+                color: orcamento.cor,
+                fontSize: '13px',
+                fontWeight: '600'
+              }}>
+                {orcamento.percentual.toFixed(0)}%
+              </span>
+            </div>
+            <p style={{
               color: orcamento.cor,
-              fontSize: '13px',
-              fontWeight: '500',
-              margin: '2px 0 0 0'
+              fontSize: '12px',
+              margin: '4px 0 0 0'
             }}>
-              {orcamento.percentual.toFixed(0)}% da previsão · 
-              {orcamento.diferenca >= 0 ? ' 👍' : ' ⚠️'}
+              {orcamento.diferenca >= 0 ? '✅ Dentro do esperado' : '⚠️ Acima da previsão'}
             </p>
           </div>
 
+          {/* Card: Velocidade */}
           <div style={{
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            padding: '15px',
-            borderRadius: '10px',
-            border: '1px solid rgba(255,255,255,0.05)'
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-              ⚡ Velocidade de Gastos
-            </p>
-            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>⚡</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Velocidade de Gastos
+              </span>
+            </div>
+            <p style={{ color: '#fff', fontSize: '24px', fontWeight: '700', margin: 0 }}>
               {formatarMoeda(velocidadeGastos)}
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '2px 0 0 0' }}>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', margin: '4px 0 0 0' }}>
               por dia (média do período)
+            </p>
+          </div>
+
+          {/* Card: Ticket Médio */}
+          <div style={{
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>🎫</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Ticket Médio
+              </span>
+            </div>
+            <p style={{ color: '#fff', fontSize: '24px', fontWeight: '700', margin: 0 }}>
+              {formatarMoeda(ticketMedio)}
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', margin: '4px 0 0 0' }}>
+              por lançamento
             </p>
           </div>
         </div>
       )}
 
       {/* ==========================================
-          SUGESTÕES DE ECONOMIA
+          SUGESTÕES DE ECONOMIA (CARDS VISUAIS)
           ========================================== */}
       {sugestoes.length > 0 && (
         <div style={{
           backgroundColor: 'rgba(255,255,255,0.03)',
-          padding: '15px',
+          padding: '15px 20px',
           borderRadius: '12px',
           border: '1px solid rgba(255,255,255,0.05)',
           marginBottom: '20px'
@@ -668,30 +754,45 @@ function Dashboard() {
           </h3>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '10px'
           }}>
-            {sugestoes.map((sugestao, index) => (
-              <div key={index} style={{
-                backgroundColor: 'rgba(255,255,255,0.05)',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                borderLeft: `3px solid ${sugestao.prioridade === 'alta' ? '#fc8181' : '#f6ad55'}`
-              }}>
-                <p style={{ color: '#fff', fontSize: '13px', margin: 0 }}>
-                  {sugestao.sugestao}
-                </p>
-                <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '4px 0 0 0' }}>
-                  Categoria: {sugestao.categoria}
-                </p>
-              </div>
-            ))}
+            {sugestoes.map((sugestao, index) => {
+              const cores = {
+                alta: { bg: 'rgba(217,74,74,0.15)', border: '#d94a4a', icon: '🔴' },
+                media: { bg: 'rgba(237,137,54,0.15)', border: '#ed8936', icon: '🟡' },
+                baixa: { bg: 'rgba(58,122,189,0.15)', border: '#3a7abd', icon: '🔵' }
+              }
+              const estilo = cores[sugestao.prioridade] || cores.media
+              
+              return (
+                <div key={index} style={{
+                  backgroundColor: estilo.bg,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  borderLeft: `3px solid ${estilo.border}`,
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'flex-start'
+                }}>
+                  <span style={{ fontSize: '18px' }}>{estilo.icon}</span>
+                  <div>
+                    <p style={{ color: '#fff', fontSize: '13px', margin: 0 }}>
+                      {sugestao.sugestao}
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '4px 0 0 0' }}>
+                      Categoria: {sugestao.categoria}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
 
       {/* ==========================================
-          INDICADORES AVANÇADOS
+          INDICADORES AVANÇADOS (Categoria Mais Cara)
           ========================================== */}
       <div style={{
         display: 'grid',
@@ -700,36 +801,24 @@ function Dashboard() {
         marginBottom: '20px'
       }}>
         <div style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          padding: '15px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255,255,255,0.05)'
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-            🏷️ Categoria Mais Cara
-          </p>
-          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '20px' }}>🏷️</span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Categoria Mais Cara
+            </span>
+          </div>
+          <p style={{ color: '#fff', fontSize: '20px', fontWeight: '600', margin: 0 }}>
             {carregando ? '...' : categoriaMaisCara?.nome || 'Nenhuma'}
           </p>
-          <p style={{ color: '#fc8181', fontSize: '13px', margin: '2px 0 0 0' }}>
+          <p style={{ color: '#fc8181', fontSize: '16px', fontWeight: '600', margin: '2px 0 0 0' }}>
             {carregando ? '...' : formatarMoeda(categoriaMaisCara?.valor || 0)}
-          </p>
-        </div>
-
-        <div style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          padding: '15px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-            🎫 Ticket Médio
-          </p>
-          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
-            {carregando ? '...' : formatarMoeda(ticketMedio)}
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
-            por lançamento
           </p>
         </div>
       </div>
