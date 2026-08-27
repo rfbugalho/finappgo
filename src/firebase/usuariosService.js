@@ -1,3 +1,4 @@
+// src/firebase/usuariosService.js
 import { 
   collection, 
   addDoc, 
@@ -7,25 +8,12 @@ import {
   getDocs, 
   query, 
   where,
-  orderBy,
-  getDoc,
-  setDoc
+  orderBy
 } from 'firebase/firestore'
-import { 
-  db, 
-  auth 
-} from './firebase'
-import { 
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  deleteUser
-} from 'firebase/auth'
+import { db, auth } from './firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 
 const COLLECTION_NAME = 'usuarios'
-
-// ==========================================
-// BUSCAR USUÁRIOS
-// ==========================================
 
 export const buscarUsuarios = async () => {
   try {
@@ -49,20 +37,14 @@ export const buscarUsuarios = async () => {
   }
 }
 
-// ==========================================
-// CONVIDAR USUÁRIO (criar no Firebase Auth)
-// ==========================================
-
 export const convidarUsuario = async (email, senha, nome, permissao = 'visualizador') => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // Criar usuário no Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, senha)
     const novoUsuario = userCredential.user
 
-    // Salvar dados do usuário no Firestore
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       uid: novoUsuario.uid,
       nome: nome,
@@ -70,11 +52,9 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
       permissao: permissao,
       status: 'ativo',
       criadoPor: user.uid,
+      userId: user.uid,
       criadoEm: new Date().toISOString()
     })
-
-    // Enviar e-mail de boas-vidas (opcional)
-    // await sendPasswordResetEmail(auth, email)
 
     return { id: docRef.id, uid: novoUsuario.uid, nome, email, permissao }
   } catch (error) {
@@ -82,10 +62,6 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
     throw error
   }
 }
-
-// ==========================================
-// ATUALIZAR USUÁRIO
-// ==========================================
 
 export const atualizarUsuario = async (id, dados) => {
   try {
@@ -104,60 +80,19 @@ export const atualizarUsuario = async (id, dados) => {
   }
 }
 
-// ==========================================
-// EXCLUIR USUÁRIO
-// ==========================================
-
-export const excluirUsuario = async (id, uid) => {
+export const excluirUsuario = async (id) => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // Excluir do Firestore
     const docRef = doc(db, COLLECTION_NAME, id)
     await deleteDoc(docRef)
-
-    // Excluir do Firebase Auth (requer funções administrativas)
-    // Nota: Para excluir usuários do Auth, você precisa usar Admin SDK
-    // ou o usuário pode excluir sua própria conta
-
     return id
   } catch (error) {
     console.error('Erro ao excluir usuário:', error)
     throw error
   }
 }
-
-// ==========================================
-// VERIFICAR PERMISSÃO
-// ==========================================
-
-export const verificarPermissao = async (usuarioId) => {
-  try {
-    const user = auth.currentUser
-    if (!user) throw new Error('Usuário não logado')
-
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('uid', '==', user.uid)
-    )
-    const querySnapshot = await getDocs(q)
-    
-    if (querySnapshot.empty) {
-      return 'admin' // Se não encontrado, é o próprio admin
-    }
-
-    const usuario = querySnapshot.docs[0].data()
-    return usuario.permissao || 'visualizador'
-  } catch (error) {
-    console.error('Erro ao verificar permissão:', error)
-    return 'visualizador'
-  }
-}
-
-// ==========================================
-// GERAR SENHA TEMPORÁRIA
-// ==========================================
 
 export const gerarSenhaTemporaria = () => {
   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
