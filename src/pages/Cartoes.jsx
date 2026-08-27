@@ -7,14 +7,21 @@ import {
   buscarDespesasCartao,
   adicionarDespesaCartao,
   atualizarDespesaCartao,
-  excluirDespesaCartao
+  excluirDespesaCartao,
+  registrarPagamentoFatura,
+  buscarPagamentosCartao
 } from '../firebase/cartoesService'
+import { buscarContasAtivas } from '../firebase/contasService'
+import { formatarMoeda, formatarData } from '../utils/formatters'
 
 function Cartoes() {
   const [cartoes, setCartoes] = useState([])
+  const [contas, setContas] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [carregandoContas, setCarregandoContas] = useState(true)
   const [cartaoSelecionado, setCartaoSelecionado] = useState(null)
   const [despesas, setDespesas] = useState([])
+  const [pagamentos, setPagamentos] = useState([])
   const [mostrarDespesas, setMostrarDespesas] = useState(false)
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear())
@@ -46,6 +53,17 @@ function Cartoes() {
     anoFatura: new Date().getFullYear()
   })
 
+  // Modal Pagamento Fatura
+  const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false)
+  const [formPagamento, setFormPagamento] = useState({
+    cartaoId: '',
+    valor: '',
+    dataPagamento: new Date().toISOString().split('T')[0],
+    dataVencimento: new Date().toISOString().split('T')[0],
+    contaId: '',
+    descricao: ''
+  })
+
   const bandeiras = [
     { nome: 'Visa', emoji: '💳' },
     { nome: 'Mastercard', emoji: '💳' },
@@ -65,8 +83,16 @@ function Cartoes() {
     setCarregando(false)
   }
 
+  const carregarContas = async () => {
+    setCarregandoContas(true)
+    const dados = await buscarContasAtivas()
+    setContas(dados)
+    setCarregandoContas(false)
+  }
+
   useEffect(() => {
     carregarCartoes()
+    carregarContas()
   }, [])
 
   // ==========================================
@@ -151,6 +177,8 @@ function Cartoes() {
     setCartaoSelecionado(cartao)
     const dados = await buscarDespesasCartao(cartaoId, filtroMes, filtroAno)
     setDespesas(dados)
+    const pagamentosDados = await buscarPagamentosCartao(cartaoId)
+    setPagamentos(pagamentosDados)
     setMostrarDespesas(true)
   }
 
@@ -254,18 +282,62 @@ function Cartoes() {
   }
 
   // ==========================================
+  // FUNÇÕES DE PAGAMENTO DE FATURA
+  // ==========================================
+  const abrirModalPagamentoFatura = (cartaoId) => {
+    const cartao = cartoes.find(c => c.id === cartaoId)
+    if (!cartao) return
+
+    const hoje = new Date()
+    const dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth(), parseInt(cartao.dataVencimento) || 10)
+    
+    setFormPagamento({
+      cartaoId: cartaoId,
+      valor: '',
+      dataPagamento: hoje.toISOString().split('T')[0],
+      dataVencimento: dataVencimento.toISOString().split('T')[0],
+      contaId: '',
+      descricao: ''
+    })
+    setModalPagamentoAberto(true)
+  }
+
+  const salvarPagamentoFatura = async (e) => {
+    e.preventDefault()
+    
+    const valorNumero = parseFloat(formPagamento.valor)
+    if (isNaN(valorNumero) || valorNumero <= 0) {
+      alert('Digite um valor válido.')
+      return
+    }
+
+    if (!formPagamento.contaId) {
+      alert('Selecione uma conta para o pagamento.')
+      return
+    }
+
+    try {
+      await registrarPagamentoFatura({
+        cartaoId: formPagamento.cartaoId,
+        valor: valorNumero,
+        data: formPagamento.dataPagamento,
+        dataVencimento: formPagamento.dataVencimento,
+        contaId: formPagamento.contaId,
+        descricao: formPagamento.descricao || 'Pagamento de fatura'
+      })
+      
+      await carregarCartoes()
+      setModalPagamentoAberto(false)
+      alert('Pagamento da fatura registrado com sucesso!')
+    } catch (error) {
+      alert('Erro ao registrar pagamento: ' + error.message)
+      console.error(error)
+    }
+  }
+
+  // ==========================================
   // FORMATADORES
   // ==========================================
-  const formatarMoeda = (valor) => {
-    return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
-  const formatarData = (data) => {
-    if (!data) return '-'
-    const partes = data.split('-')
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
-  }
-
   const getBandeiraEmoji = (bandeira) => {
     const b = bandeiras.find(b => b.nome.toLowerCase() === bandeira?.toLowerCase())
     return b?.emoji || '💳'
@@ -276,7 +348,6 @@ function Cartoes() {
     return meses[mes - 1] || mes
   }
 
-  // Calcular total da fatura
   const totalFatura = despesas.reduce((acc, item) => acc + item.valor, 0)
 
   return (
@@ -321,7 +392,7 @@ function Cartoes() {
       {/* LISTA DE CARTÕES */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
         gap: '16px'
       }}>
         {carregando ? (
@@ -377,6 +448,23 @@ function Cartoes() {
                     }}>
                       {cartao.bandeira} · Fecha {cartao.dataFechamento || '--'} · Vence {cartao.dataVencimento || '--'}
                     </p>
+                    {cartao.statusFatura && (
+                      <span style={{
+                        backgroundColor: cartao.statusFatura === 'paga' ? 'rgba(45,138,78,0.2)' : 
+                                       cartao.statusFatura === 'vencida' ? 'rgba(217,74,74,0.2)' : 'rgba(237,137,54,0.2)',
+                        color: cartao.statusFatura === 'paga' ? '#2d8a4e' : 
+                               cartao.statusFatura === 'vencida' ? '#d94a4a' : '#ed8936',
+                        padding: '2px 10px',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: '500',
+                        display: 'inline-block',
+                        marginTop: '4px'
+                      }}>
+                        {cartao.statusFatura === 'paga' ? '✅ Fatura Paga' : 
+                         cartao.statusFatura === 'vencida' ? '🔴 Fatura Vencida' : '🟡 Fatura Aberta'}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
@@ -455,7 +543,7 @@ function Cartoes() {
                 {/* Botões de ação */}
                 <div style={{ 
                   display: 'flex', 
-                  gap: '8px', 
+                  gap: '6px', 
                   marginTop: '16px',
                   borderTop: '1px solid rgba(255,255,255,0.05)',
                   paddingTop: '12px'
@@ -467,10 +555,10 @@ function Cartoes() {
                       backgroundColor: 'rgba(58,122,189,0.2)',
                       color: '#3a7abd',
                       border: 'none',
-                      padding: '8px',
+                      padding: '6px',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: '500'
                     }}
                   >
@@ -483,14 +571,30 @@ function Cartoes() {
                       backgroundColor: 'rgba(45,138,78,0.2)',
                       color: '#2d8a4e',
                       border: 'none',
-                      padding: '8px',
+                      padding: '6px',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: '500'
                     }}
                   >
                     ➕ Lançar Despesa
+                  </button>
+                  <button
+                    onClick={() => abrirModalPagamentoFatura(cartao.id)}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(159,122,234,0.2)',
+                      color: '#9f7aea',
+                      border: 'none',
+                      padding: '6px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    💳 Pagar
                   </button>
                 </div>
               </div>
@@ -832,7 +936,7 @@ function Cartoes() {
                 </div>
               )}
 
-              {/* ⭐ NOVO: Selecionar Fatura */}
+              {/* Selecionar Fatura */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   📋 Lançar na Fatura de
@@ -919,7 +1023,201 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - FATURA (COM FILTROS E GRID COMPLETO)
+          MODAL - PAGAMENTO DE FATURA
+          ========================================== */}
+      {modalPagamentoAberto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }} onClick={() => setModalPagamentoAberto(false)}>
+          <div style={{
+            backgroundColor: '#1a2b4a',
+            padding: '30px',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.08)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '20px', color: '#ffffff', marginBottom: '4px' }}>
+              💳 Pagar Fatura
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', marginBottom: '20px' }}>
+              Registre o pagamento da fatura do cartão
+            </p>
+
+            <form onSubmit={salvarPagamentoFatura}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  💰 Valor Pago (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={formPagamento.valor}
+                  onChange={(e) => setFormPagamento({ ...formPagamento, valor: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                    📅 Data do Pagamento
+                  </label>
+                  <input
+                    type="date"
+                    value={formPagamento.dataPagamento}
+                    onChange={(e) => setFormPagamento({ ...formPagamento, dataPagamento: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                    📅 Data de Vencimento
+                  </label>
+                  <input
+                    type="date"
+                    value={formPagamento.dataVencimento}
+                    onChange={(e) => setFormPagamento({ ...formPagamento, dataVencimento: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  🏦 Conta de Pagamento
+                </label>
+                {carregandoContas ? (
+                  <p style={{ color: 'rgba(255,255,255,0.3)' }}>Carregando...</p>
+                ) : (
+                  <select
+                    value={formPagamento.contaId}
+                    onChange={(e) => setFormPagamento({ ...formPagamento, contaId: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  >
+                    <option value="">Selecione uma conta</option>
+                    {contas.map(conta => (
+                      <option key={conta.id} value={conta.id} style={{ backgroundColor: '#1a2b4a' }}>
+                        {conta.logo || '🏦'} {conta.nomeExibicao || conta.instituicao}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📝 Descrição (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Pagamento fatura Nubank"
+                  value={formPagamento.descricao}
+                  onChange={(e) => setFormPagamento({ ...formPagamento, descricao: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalPagamentoAberto(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.6)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#2d8a4e',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  💳 Pagar Fatura
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL - FATURA
           ========================================== */}
       {mostrarDespesas && cartaoSelecionado && (
         <div style={{
@@ -928,7 +1226,7 @@ function Cartoes() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.8)',
+          backgroundColor: 'rgba(0,0,0,0.85)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -940,7 +1238,7 @@ function Cartoes() {
             backgroundColor: '#1a2b4a',
             padding: '30px',
             borderRadius: '16px',
-            maxWidth: '900px',
+            maxWidth: '950px',
             width: '100%',
             border: '1px solid rgba(255,255,255,0.08)',
             maxHeight: '85vh',
@@ -972,7 +1270,44 @@ function Cartoes() {
               </button>
             </div>
 
-            {/* Filtros de Mês/Ano */}
+            {/* Status da Fatura */}
+            <div style={{
+              display: 'flex',
+              gap: '16px',
+              marginBottom: '16px',
+              padding: '12px 16px',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              flexWrap: 'wrap'
+            }}>
+              <div>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Status</span>
+                <p style={{
+                  color: cartaoSelecionado.statusFatura === 'paga' ? '#2d8a4e' : 
+                         cartaoSelecionado.statusFatura === 'vencida' ? '#d94a4a' : '#ed8936',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  margin: 0
+                }}>
+                  {cartaoSelecionado.statusFatura === 'paga' ? '✅ Paga' : 
+                   cartaoSelecionado.statusFatura === 'vencida' ? '🔴 Vencida' : '🟡 Aberta'}
+                </p>
+              </div>
+              <div>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Total Pago</span>
+                <p style={{ color: '#2d8a4e', fontWeight: '600', fontSize: '14px', margin: 0 }}>
+                  {formatarMoeda(cartaoSelecionado.totalPago || 0)}
+                </p>
+              </div>
+              <div>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Total Fatura</span>
+                <p style={{ color: '#fc8181', fontWeight: '600', fontSize: '14px', margin: 0 }}>
+                  {formatarMoeda(totalFatura)}
+                </p>
+              </div>
+            </div>
+
+            {/* Filtros */}
             <div style={{
               display: 'flex',
               gap: '12px',
@@ -1030,26 +1365,26 @@ function Cartoes() {
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '14px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Data</th>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Descrição</th>
-                      <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Valor</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Parcelas</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Fatura</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Ações</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Data</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
+                      <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Fatura</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {despesas.map(despesa => (
                       <tr key={despesa.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '10px', fontSize: '13px' }}>{formatarData(despesa.data)}</td>
-                        <td style={{ padding: '10px', fontSize: '13px' }}>{despesa.descricao}</td>
-                        <td style={{ padding: '10px', fontSize: '13px', textAlign: 'right', color: '#d94a4a' }}>
+                        <td style={{ padding: '10px' }}>{formatarData(despesa.data)}</td>
+                        <td style={{ padding: '10px' }}>{despesa.descricao}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#d94a4a' }}>
                           - {formatarMoeda(despesa.valor)}
                         </td>
-                        <td style={{ padding: '10px', fontSize: '13px', textAlign: 'center' }}>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
                           {despesa.parcelado ? (
                             <span style={{
                               backgroundColor: 'rgba(58,122,189,0.2)',
@@ -1064,7 +1399,7 @@ function Cartoes() {
                             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>À vista</span>
                           )}
                         </td>
-                        <td style={{ padding: '10px', fontSize: '13px', textAlign: 'center' }}>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
                           <span style={{
                             backgroundColor: 'rgba(159,122,234,0.15)',
                             color: '#9f7aea',
