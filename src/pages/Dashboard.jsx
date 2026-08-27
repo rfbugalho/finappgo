@@ -10,6 +10,12 @@ import { buscarMetas } from '../firebase/metasService'
 import { buscarRecorrencias } from '../firebase/recorrenciasService'
 import { gerarNotificacoesAutomaticas } from '../firebase/notificacoesService'
 import { formatarMoeda, formatarData } from '../utils/formatters'
+import {
+  calcularPrevisaoGastos,
+  calcularScoreSaudeFinanceira,
+  gerarSugestoesEconomia,
+  calcularOrcamento
+} from '../services/inteligenciaFinanceira'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -89,18 +95,24 @@ function Dashboard() {
   // ==========================================
   const [categoriaMaisCara, setCategoriaMaisCara] = useState(null)
   const [ticketMedio, setTicketMedio] = useState(0)
-  const [previsaoGastos, setPrevisaoGastos] = useState(0)
   const [velocidadeGastos, setVelocidadeGastos] = useState(0)
   const [top5Despesas, setTop5Despesas] = useState([])
   const [rankingCategorias, setRankingCategorias] = useState([])
+
+  // ==========================================
+  // ESTADOS DE INTELIGÊNCIA FINANCEIRA
+  // ==========================================
+  const [previsao, setPrevisao] = useState(null)
+  const [scoreSaude, setScoreSaude] = useState(null)
+  const [sugestoes, setSugestoes] = useState([])
+  const [orcamento, setOrcamento] = useState(null)
+  const [comparativoMensal, setComparativoMensal] = useState([])
 
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
   const proximos7Dias = new Date(hoje)
   proximos7Dias.setDate(proximos7Dias.getDate() + 7)
   const proximos7DiasStr = proximos7Dias.toISOString().split('T')[0]
-  const mesAtual = hoje.getMonth()
-  const anoAtual = hoje.getFullYear()
 
   // ==========================================
   // CARREGAR DADOS
@@ -165,7 +177,6 @@ function Dashboard() {
     // Despesas do período filtrado
     const despesasFiltradas = dados.filter(item => item.tipo === 'despesa')
     
-    // Despesas vencidas (data < hoje E status != pago)
     const vencidas = despesasFiltradas.filter(item => {
       const estaVencida = item.data < hojeStr
       const naoPaga = item.statusPagamento !== 'pago'
@@ -174,12 +185,10 @@ function Dashboard() {
     setDespesasVencidas(vencidas)
     setValorTotalVencido(vencidas.reduce((acc, item) => acc + item.valor, 0))
     
-    // Despesas de hoje
     const hojeDespesas = despesasFiltradas.filter(item => item.data === hojeStr && item.statusPagamento !== 'pago')
     setDespesasHoje(hojeDespesas)
     setValorTotalHoje(hojeDespesas.reduce((acc, item) => acc + item.valor, 0))
     
-    // Despesas dos próximos 7 dias
     const proximosDias = despesasFiltradas.filter(item => 
       item.data > hojeStr && item.data <= proximos7DiasStr && item.statusPagamento !== 'pago'
     )
@@ -212,7 +221,6 @@ function Dashboard() {
     // INDICADORES AVANÇADOS
     // ==========================================
 
-    // 1. Categoria Mais Cara
     if (categoriasArray.length > 0) {
       const maisCara = categoriasArray[0]
       setCategoriaMaisCara(maisCara)
@@ -220,44 +228,16 @@ function Dashboard() {
       setCategoriaMaisCara(null)
     }
 
-    // 2. Ranking de Categorias (Top 5)
     const ranking = categoriasArray.slice(0, 5)
     setRankingCategorias(ranking)
 
-    // 3. Ticket Médio
     const totalDespesasMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
     const qtdDespesas = despesasFiltradas.length
     setTicketMedio(qtdDespesas > 0 ? totalDespesasMes / qtdDespesas : 0)
 
-    // 4. Previsão de Gastos
-    const ultimos3Meses = []
-    for (let i = 1; i <= 3; i++) {
-      let mes = filtros.mes - i
-      let ano = filtros.ano
-      if (mes <= 0) {
-        mes += 12
-        ano -= 1
-      }
-      const mesStrPrev = String(mes).padStart(2, '0')
-      const anoStrPrev = String(ano)
-      const gastos = lancamentos
-        .filter(item => {
-          if (!item.data) return false
-          const partes = item.data.split('-')
-          return item.tipo === 'despesa' && partes[0] === anoStrPrev && partes[1] === mesStrPrev
-        })
-        .reduce((acc, item) => acc + item.valor, 0)
-      ultimos3Meses.push(gastos)
-    }
-    const media3Meses = ultimos3Meses.reduce((acc, val) => acc + val, 0) / ultimos3Meses.filter(m => m > 0).length || 0
-    setPrevisaoGastos(media3Meses * 1.1)
-
-    // 5. Velocidade de Gastos
     const diasNoMes = new Date(filtros.ano, filtros.mes, 0).getDate()
-    const totalGastoMes = despesasFiltradas.reduce((acc, item) => acc + item.valor, 0)
-    setVelocidadeGastos(diasNoMes > 0 ? totalGastoMes / diasNoMes : 0)
+    setVelocidadeGastos(diasNoMes > 0 ? totalDespesasMes / diasNoMes : 0)
 
-    // 6. Top 5 Despesas do período
     const top5 = despesasFiltradas
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5)
@@ -266,6 +246,45 @@ function Dashboard() {
         valor: parseFloat(item.valor.toFixed(2))
       }))
     setTop5Despesas(top5)
+
+    // ==========================================
+    // INTELIGÊNCIA FINANCEIRA
+    // ==========================================
+    
+    // 1. Previsão de Gastos
+    const prev = calcularPrevisaoGastos(lancamentos)
+    setPrevisao(prev)
+
+    // 2. Score de Saúde Financeira
+    const score = calcularScoreSaudeFinanceira(lancamentos, contas, cartoes, metas)
+    setScoreSaude(score)
+
+    // 3. Sugestões de Economia
+    const sugestoesGeradas = gerarSugestoesEconomia(lancamentos)
+    setSugestoes(sugestoesGeradas)
+
+    // 4. Orçamento
+    const orc = calcularOrcamento(lancamentos, prev.previsao)
+    setOrcamento(orc)
+
+    // 5. Comparativo Mensal (últimos 6 meses)
+    const comparativo = []
+    for (let i = 5; i >= 0; i--) {
+      const data = new Date(filtros.ano, filtros.mes - 1 - i, 1)
+      const mesStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+      const gastos = lancamentos
+        .filter(item => item.tipo === 'despesa' && item.data?.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      const receitasMes = lancamentos
+        .filter(item => item.tipo === 'receita' && item.data?.startsWith(mesStr))
+        .reduce((acc, item) => acc + item.valor, 0)
+      comparativo.push({
+        mes: data.toLocaleString('pt-BR', { month: 'short' }),
+        despesas: gastos,
+        receitas: receitasMes
+      })
+    }
+    setComparativoMensal(comparativo)
   }
 
   useEffect(() => {
@@ -496,6 +515,182 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
+          SCORE DE SAÚDE FINANCEIRA
+          ========================================== */}
+      {scoreSaude && (
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '20px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: '20px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: `${scoreSaude.score}%`,
+            height: '100%',
+            backgroundColor: `${scoreSaude.cor}15`,
+            transition: 'width 1s ease'
+          }} />
+          
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ color: '#ffffff', fontSize: '18px', margin: 0 }}>
+                  🩺 Saúde Financeira
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '4px 0 0 0' }}>
+                  {scoreSaude.detalhes.join(' · ')}
+                </p>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{
+                  fontSize: '36px',
+                  fontWeight: '700',
+                  color: scoreSaude.cor
+                }}>
+                  {scoreSaude.score}
+                </span>
+                <span style={{
+                  fontSize: '18px',
+                  color: 'rgba(255,255,255,0.3)',
+                  marginLeft: '4px'
+                }}>
+                  /100
+                </span>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: scoreSaude.cor,
+                  margin: 0
+                }}>
+                  {scoreSaude.nivel}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          PREVISÃO E ORÇAMENTO
+          ========================================== */}
+      {previsao && orcamento && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            padding: '15px',
+            borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+              📈 Previsão de Gastos
+            </p>
+            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+              {formatarMoeda(previsao.previsao)}
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '2px 0 0 0' }}>
+              Baseado nos últimos {previsao.mesesAnalisados} meses
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            padding: '15px',
+            borderRadius: '10px',
+            border: `1px solid ${orcamento.cor}33`
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+              📊 Orçamento (vs Previsão)
+            </p>
+            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+              {formatarMoeda(orcamento.gastoReal)}
+            </p>
+            <p style={{ 
+              color: orcamento.cor,
+              fontSize: '13px',
+              fontWeight: '500',
+              margin: '2px 0 0 0'
+            }}>
+              {orcamento.percentual.toFixed(0)}% da previsão · 
+              {orcamento.diferenca >= 0 ? ' 👍' : ' ⚠️'}
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            padding: '15px',
+            borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
+              ⚡ Velocidade de Gastos
+            </p>
+            <p style={{ color: '#fff', fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: '600', margin: 0 }}>
+              {formatarMoeda(velocidadeGastos)}
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '2px 0 0 0' }}>
+              por dia (média do período)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          SUGESTÕES DE ECONOMIA
+          ========================================== */}
+      {sugestoes.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ 
+            fontSize: 'clamp(12px, 2vw, 14px)', 
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: '600',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            💡 Sugestões de Economia
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+            gap: '10px'
+          }}>
+            {sugestoes.map((sugestao, index) => (
+              <div key={index} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                borderLeft: `3px solid ${sugestao.prioridade === 'alta' ? '#fc8181' : '#f6ad55'}`
+              }}>
+                <p style={{ color: '#fff', fontSize: '13px', margin: 0 }}>
+                  {sugestao.sugestao}
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '4px 0 0 0' }}>
+                  Categoria: {sugestao.categoria}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
           INDICADORES AVANÇADOS
           ========================================== */}
       <div style={{
@@ -535,40 +730,6 @@ function Dashboard() {
           </p>
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
             por lançamento
-          </p>
-        </div>
-
-        <div style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          padding: '15px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-            📈 Previsão de Gastos
-          </p>
-          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
-            {carregando ? '...' : formatarMoeda(previsaoGastos)}
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
-            próximo mês (estimativa)
-          </p>
-        </div>
-
-        <div style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          padding: '15px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>
-            ⚡ Velocidade de Gastos
-          </p>
-          <p style={{ color: '#fff', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: '600', margin: 0 }}>
-            {carregando ? '...' : formatarMoeda(velocidadeGastos)}
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: '2px 0 0 0' }}>
-            por dia (média)
           </p>
         </div>
       </div>
@@ -830,7 +991,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          RECORRÊNCIAS ATIVAS (NOVO)
+          RECORRÊNCIAS ATIVAS
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -919,11 +1080,6 @@ function Dashboard() {
             <p style={{ color: 'rgba(255,255,255,0.3)' }}>
               Nenhuma categoria com gastos no período selecionado
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px' }}>
-              {lancamentosFiltrados.length === 0 
-                ? 'Tente selecionar outro mês ou ano' 
-                : 'Suas despesas não estão categorizadas'}
-            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -977,7 +1133,7 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          TOP 5 DESPESAS DO PERÍODO
+          TOP 5 DESPESAS
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -994,7 +1150,7 @@ function Dashboard() {
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
-          🔥 Top 5 Despesas do Período (Maiores Valores)
+          🔥 Top 5 Despesas do Período
         </h3>
         {carregando ? (
           <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>Carregando...</p>
@@ -1002,11 +1158,6 @@ function Dashboard() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <p style={{ color: 'rgba(255,255,255,0.3)' }}>
               Nenhuma despesa no período selecionado
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px' }}>
-              {lancamentosFiltrados.length === 0 
-                ? 'Tente selecionar outro mês ou ano' 
-                : 'Suas despesas não foram registradas neste período'}
             </p>
           </div>
         ) : (
