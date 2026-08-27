@@ -134,11 +134,6 @@ export const adicionarDespesaCartao = async (despesa) => {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // Se for pagamento de fatura
-    if (despesa.pagamentoFatura) {
-      return await registrarPagamentoFatura(despesa)
-    }
-
     let valorParcela = despesa.valor
     let totalParcelas = 1
     let parcelaAtual = 1
@@ -170,6 +165,45 @@ export const adicionarDespesaCartao = async (despesa) => {
   }
 }
 
+export const atualizarDespesaCartao = async (id, despesa) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const docRef = doc(db, DESPESAS_COLLECTION, id)
+    await updateDoc(docRef, {
+      ...despesa,
+      atualizadoEm: new Date().toISOString()
+    })
+
+    await atualizarLimiteCartao(despesa.cartaoId)
+
+    return { id, ...despesa }
+  } catch (error) {
+    console.error('Erro ao atualizar despesa do cartão:', error)
+    throw error
+  }
+}
+
+export const excluirDespesaCartao = async (id, cartaoId) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const docRef = doc(db, DESPESAS_COLLECTION, id)
+    await deleteDoc(docRef)
+
+    if (cartaoId) {
+      await atualizarLimiteCartao(cartaoId)
+    }
+
+    return id
+  } catch (error) {
+    console.error('Erro ao excluir despesa do cartão:', error)
+    throw error
+  }
+}
+
 // ==========================================
 // PAGAMENTO DE FATURA
 // ==========================================
@@ -179,7 +213,6 @@ export const registrarPagamentoFatura = async (pagamento) => {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // Buscar o cartão
     const cartaoRef = doc(db, COLLECTION_NAME, pagamento.cartaoId)
     const cartaoDoc = await getDoc(cartaoRef)
     if (!cartaoDoc.exists()) {
@@ -191,19 +224,16 @@ export const registrarPagamentoFatura = async (pagamento) => {
     const dataPagamento = pagamento.data || new Date().toISOString().split('T')[0]
     const dataVencimento = pagamento.dataVencimento || dataPagamento
 
-    // Verificar se pagou após o vencimento
     const vencido = dataPagamento > dataVencimento
     let juros = 0
     let multa = 0
 
     if (vencido) {
-      // Calcular juros (exemplo: 2% de multa + 0.033% ao dia)
       const diasAtraso = Math.ceil((new Date(dataPagamento) - new Date(dataVencimento)) / (1000 * 60 * 60 * 24))
-      multa = valorPago * 0.02 // 2% de multa
-      juros = valorPago * (0.00033 * diasAtraso) // 0.033% ao dia
+      multa = valorPago * 0.02
+      juros = valorPago * (0.00033 * diasAtraso)
     }
 
-    // Registrar pagamento
     const docRef = await addDoc(collection(db, PAGAMENTOS_COLLECTION), {
       cartaoId: pagamento.cartaoId,
       valor: valorPago,
@@ -218,25 +248,7 @@ export const registrarPagamentoFatura = async (pagamento) => {
       criadoEm: new Date().toISOString()
     })
 
-    // Atualizar limite do cartão (liberar o valor pago)
     await atualizarLimiteCartao(pagamento.cartaoId)
-
-    // Registrar também como lançamento (para aparecer na tela de lançamentos)
-    const lancamento = {
-      data: dataPagamento,
-      descricao: `${vencido ? '🔴 PAGAMENTO FATURA (VENCIDO)' : '✅ PAGAMENTO FATURA'} - ${cartao.nome}`,
-      categoria: 'Pagamento Fatura',
-      subcategoria: cartao.nome,
-      tipo: 'despesa',
-      valor: valorPago + juros + multa,
-      contaId: pagamento.contaId || '',
-      cartaoId: pagamento.cartaoId,
-      pagamentoFatura: true,
-      statusPagamento: 'pago'
-    }
-
-    const { adicionarLancamento } = await import('./lancamentosService')
-    await adicionarLancamento(lancamento)
 
     return {
       id: docRef.id,
@@ -292,7 +304,6 @@ export const atualizarLimiteCartao = async (cartaoId) => {
 
     const cartao = cartaoDoc.data()
     
-    // Buscar todas as despesas do cartão
     const q = query(
       collection(db, DESPESAS_COLLECTION),
       where('userId', '==', user.uid),
@@ -302,21 +313,18 @@ export const atualizarLimiteCartao = async (cartaoId) => {
     
     let totalGasto = 0
     let totalFatura = 0
-    let statusFatura = 'aberta'
 
     querySnapshot.forEach((doc) => {
       const despesa = doc.data()
-      // Se for compra parcelada, considerar apenas o valor total da compra
       if (despesa.parcelado) {
-        totalGasto += despesa.valor // Valor total da compra
-        totalFatura += despesa.valorParcela // Valor da parcela atual
+        totalGasto += despesa.valor
+        totalFatura += despesa.valorParcela
       } else {
         totalGasto += despesa.valor
         totalFatura += despesa.valor
       }
     })
 
-    // Buscar pagamentos realizados
     const qPagamentos = query(
       collection(db, PAGAMENTOS_COLLECTION),
       where('userId', '==', user.uid),
@@ -328,11 +336,10 @@ export const atualizarLimiteCartao = async (cartaoId) => {
       totalPago += doc.data().totalPago || doc.data().valor || 0
     })
 
-    // Ajustar total gasto considerando pagamentos
     const totalEfetivo = totalGasto - totalPago
     const limiteDisponivel = cartao.limiteTotal - totalEfetivo
 
-    // Atualizar status da fatura
+    let statusFatura = 'aberta'
     if (totalEfetivo <= 0) {
       statusFatura = 'paga'
     } else if (totalFatura > 0) {
