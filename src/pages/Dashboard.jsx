@@ -85,6 +85,7 @@ function Dashboard() {
   const [totalDespesas, setTotalDespesas] = useState(0)
   const [saldo, setSaldo] = useState(0)
   const [economiaPercentual, setEconomiaPercentual] = useState(0)
+  const [saldoAnterior, setSaldoAnterior] = useState(0)
 
   const [despesasVencidas, setDespesasVencidas] = useState([])
   const [despesasHoje, setDespesasHoje] = useState([])
@@ -186,6 +187,35 @@ function Dashboard() {
     setTotalDespesas(despesas)
     setSaldo(saldoTotal)
     setEconomiaPercentual(economia)
+
+    // ==========================================
+    // CALCULAR SALDO ANTERIOR (mês passado)
+    // ==========================================
+    let mesAnterior = filtros.mes - 1
+    let anoAnterior = filtros.ano
+    if (mesAnterior <= 0) {
+      mesAnterior = 12
+      anoAnterior -= 1
+    }
+    const mesStrAnterior = String(mesAnterior).padStart(2, '0')
+    const anoStrAnterior = String(anoAnterior)
+    
+    const lancamentosMesAnterior = lancamentos.filter(item => {
+      if (!item.data) return false
+      const partes = item.data.split('-')
+      return partes[0] === anoStrAnterior && partes[1] === mesStrAnterior
+    })
+    
+    const receitasAnterior = lancamentosMesAnterior
+      .filter(item => item.tipo === 'receita')
+      .reduce((acc, item) => acc + item.valor, 0)
+    
+    const despesasAnterior = lancamentosMesAnterior
+      .filter(item => item.tipo === 'despesa')
+      .reduce((acc, item) => acc + item.valor, 0)
+    
+    const saldoAnteriorCalc = receitasAnterior - despesasAnterior
+    setSaldoAnterior(saldoAnteriorCalc)
 
     // Despesas do período filtrado
     const despesasFiltradas = dados.filter(item => item.tipo === 'despesa')
@@ -298,19 +328,15 @@ function Dashboard() {
     // INTELIGÊNCIA ARTIFICIAL
     // ==========================================
 
-    // 1. Previsão por Categoria
     const prevCategorias = preverGastosPorCategoria(lancamentos)
     setPrevisoesIA(prevCategorias)
 
-    // 2. Detecção de Anomalias
     const anom = detectarAnomalias(lancamentos)
     setAnomalias(anom)
 
-    // 3. Orçamento Inteligente
     const orcInteligente = gerarOrcamentoInteligente(lancamentos, prevCategorias)
     setOrcamentoInteligente(orcInteligente)
 
-    // 4. Tendência Geral
     if (prevCategorias) {
       const tendencias = Object.values(prevCategorias).map(p => p.tendencia)
       const crescente = tendencias.filter(t => t === 'crescente').length
@@ -499,56 +525,76 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          RESUMO FINANCEIRO (4 CARDS)
+          RESUMO FINANCEIRO (5 CARDS - COM SALDO ANTERIOR)
           ========================================== */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '12px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '10px',
         marginBottom: '20px'
       }}>
         <div style={{
           backgroundColor: 'rgba(45,138,78,0.1)',
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderRadius: '10px',
           border: '1px solid rgba(45,138,78,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Receitas</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', margin: 0 }}>Receitas</p>
           <p style={{ color: '#2d8a4e', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : formatarMoeda(totalReceitas)}
           </p>
         </div>
         <div style={{
           backgroundColor: 'rgba(217,74,74,0.1)',
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderRadius: '10px',
           border: '1px solid rgba(217,74,74,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Despesas</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', margin: 0 }}>Despesas</p>
           <p style={{ color: '#d94a4a', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : formatarMoeda(totalDespesas)}
           </p>
         </div>
         <div style={{
           backgroundColor: 'rgba(58,122,189,0.1)',
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderRadius: '10px',
           border: '1px solid rgba(58,122,189,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Saldo</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', margin: 0 }}>Saldo</p>
           <p style={{ color: saldo >= 0 ? '#2d8a4e' : '#d94a4a', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : formatarMoeda(saldo)}
           </p>
         </div>
         <div style={{
           backgroundColor: 'rgba(159,122,234,0.1)',
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderRadius: '10px',
           border: '1px solid rgba(159,122,234,0.2)'
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0 }}>Economia</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', margin: 0 }}>Economia</p>
           <p style={{ color: '#9f7aea', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', margin: 0 }}>
             {carregando ? '...' : `${economiaPercentual.toFixed(1)}%`}
+          </p>
+        </div>
+        {/* ⭐ NOVO CARD: SALDO ANTERIOR */}
+        <div style={{
+          backgroundColor: 'rgba(237,137,54,0.1)',
+          padding: '10px 14px',
+          borderRadius: '10px',
+          border: '1px solid rgba(237,137,54,0.2)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', margin: 0 }}>Saldo Anterior</p>
+          <p style={{ 
+            color: saldoAnterior >= 0 ? '#ed8936' : '#d94a4a', 
+            fontSize: 'clamp(16px, 3vw, 20px)', 
+            fontWeight: '700', 
+            margin: 0 
+          }}>
+            {carregando ? '...' : formatarMoeda(saldoAnterior)}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '9px', margin: '2px 0 0 0' }}>
+            {filtros.mes === 1 ? `Dez/${filtros.ano - 1}` : `${String(filtros.mes - 1).padStart(2, '0')}/${filtros.ano}`}
           </p>
         </div>
       </div>
