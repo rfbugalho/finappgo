@@ -61,7 +61,9 @@ function Cartoes() {
     dataPagamento: new Date().toISOString().split('T')[0],
     dataVencimento: new Date().toISOString().split('T')[0],
     contaId: '',
-    descricao: ''
+    descricao: '',
+    mesFatura: new Date().getMonth() + 1,
+    anoFatura: new Date().getFullYear()
   })
 
   const bandeiras = [
@@ -289,15 +291,37 @@ function Cartoes() {
     if (!cartao) return
 
     const hoje = new Date()
-    const dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth(), parseInt(cartao.dataVencimento) || 10)
+    const mesAtual = hoje.getMonth() + 1
+    const anoAtual = hoje.getFullYear()
     
+    const diaVencimento = parseInt(cartao.dataVencimento) || 10
+    let dataVencimento = new Date(anoAtual, mesAtual - 1, diaVencimento)
+    
+    if (dataVencimento < hoje) {
+      dataVencimento = new Date(anoAtual, mesAtual, diaVencimento)
+    }
+
+    const diaFechamento = parseInt(cartao.dataFechamento) || 1
+    let mesFatura = mesAtual
+    let anoFatura = anoAtual
+    
+    if (hoje.getDate() > diaFechamento) {
+      mesFatura = mesAtual + 1
+      if (mesFatura > 12) {
+        mesFatura = 1
+        anoFatura = anoAtual + 1
+      }
+    }
+
     setFormPagamento({
       cartaoId: cartaoId,
       valor: '',
       dataPagamento: hoje.toISOString().split('T')[0],
       dataVencimento: dataVencimento.toISOString().split('T')[0],
       contaId: '',
-      descricao: ''
+      descricao: '',
+      mesFatura: mesFatura,
+      anoFatura: anoFatura
     })
     setModalPagamentoAberto(true)
   }
@@ -323,7 +347,9 @@ function Cartoes() {
         data: formPagamento.dataPagamento,
         dataVencimento: formPagamento.dataVencimento,
         contaId: formPagamento.contaId,
-        descricao: formPagamento.descricao || 'Pagamento de fatura'
+        descricao: formPagamento.descricao || 'Pagamento de fatura',
+        mesFatura: formPagamento.mesFatura,
+        anoFatura: formPagamento.anoFatura
       })
       
       await carregarCartoes()
@@ -1056,6 +1082,70 @@ function Cartoes() {
               Registre o pagamento da fatura do cartão
             </p>
 
+            {/* Fatura Referência */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '12px',
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px'
+            }}>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
+                  📅 Fatura Referente a
+                </label>
+                <select
+                  value={formPagamento.mesFatura}
+                  onChange={(e) => setFormPagamento({ 
+                    ...formPagamento, 
+                    mesFatura: parseInt(e.target.value) 
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                >
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                    <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
+                      {getNomeMes(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ alignSelf: 'end' }}>
+                <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
+                  Ano
+                </label>
+                <select
+                  value={formPagamento.anoFatura}
+                  onChange={(e) => setFormPagamento({ 
+                    ...formPagamento, 
+                    anoFatura: parseInt(e.target.value) 
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
+                >
+                  {[2024, 2025, 2026, 2027].map(a => (
+                    <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <form onSubmit={salvarPagamentoFatura}>
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
@@ -1174,6 +1264,26 @@ function Cartoes() {
                     color: '#ffffff'
                   }}
                 />
+              </div>
+
+              {/* Informação da fatura */}
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                padding: '12px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                border: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>
+                  Pagando fatura de <strong style={{ color: '#fff' }}>
+                    {getNomeMes(formPagamento.mesFatura)}/{formPagamento.anoFatura}
+                  </strong>
+                </p>
+                {formPagamento.dataPagamento > formPagamento.dataVencimento && (
+                  <p style={{ color: '#fc8181', fontSize: '11px', marginTop: '4px' }}>
+                    ⚠️ Pagamento após o vencimento. Juros e multa serão aplicados.
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
