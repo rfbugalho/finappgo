@@ -16,6 +16,11 @@ import {
   gerarSugestoesEconomia,
   calcularOrcamento
 } from '../services/inteligenciaFinanceira'
+import {
+  preverGastosPorCategoria,
+  detectarAnomalias,
+  gerarOrcamentoInteligente
+} from '../services/iaFinanceira'
 
 // ==========================================
 // COMPONENTE: Gráfico de Pizza para Subcategorias
@@ -107,6 +112,14 @@ function Dashboard() {
   const [sugestoes, setSugestoes] = useState([])
   const [orcamento, setOrcamento] = useState(null)
   const [comparativoMensal, setComparativoMensal] = useState([])
+
+  // ==========================================
+  // ESTADOS DE INTELIGÊNCIA ARTIFICIAL
+  // ==========================================
+  const [previsoesIA, setPrevisoesIA] = useState(null)
+  const [anomalias, setAnomalias] = useState([])
+  const [orcamentoInteligente, setOrcamentoInteligente] = useState(null)
+  const [tendenciaGeral, setTendenciaGeral] = useState('estavel')
 
   const hoje = new Date()
   const hojeStr = hoje.toISOString().split('T')[0]
@@ -280,6 +293,37 @@ function Dashboard() {
       })
     }
     setComparativoMensal(comparativo)
+
+    // ==========================================
+    // INTELIGÊNCIA ARTIFICIAL
+    // ==========================================
+
+    // 1. Previsão por Categoria
+    const prevCategorias = preverGastosPorCategoria(lancamentos)
+    setPrevisoesIA(prevCategorias)
+
+    // 2. Detecção de Anomalias
+    const anom = detectarAnomalias(lancamentos)
+    setAnomalias(anom)
+
+    // 3. Orçamento Inteligente
+    const orcInteligente = gerarOrcamentoInteligente(lancamentos, prevCategorias)
+    setOrcamentoInteligente(orcInteligente)
+
+    // 4. Tendência Geral
+    if (prevCategorias) {
+      const tendencias = Object.values(prevCategorias).map(p => p.tendencia)
+      const crescente = tendencias.filter(t => t === 'crescente').length
+      const decrescente = tendencias.filter(t => t === 'decrescente').length
+
+      if (crescente > decrescente) {
+        setTendenciaGeral('📈 Tendência de alta')
+      } else if (decrescente > crescente) {
+        setTendenciaGeral('📉 Tendência de baixa')
+      } else {
+        setTendenciaGeral('➡️ Tendência estável')
+      }
+    }
   }
 
   useEffect(() => {
@@ -510,7 +554,219 @@ function Dashboard() {
       </div>
 
       {/* ==========================================
-          SCORE DE SAÚDE FINANCEIRA (CARD VISUAL)
+          TENDÊNCIA GERAL (IA)
+          ========================================== */}
+      {tendenciaGeral && (
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: '20px' }}>📊</span>
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Tendência Geral de Gastos:
+          </span>
+          <span style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+            {tendenciaGeral}
+          </span>
+        </div>
+      )}
+
+      {/* ==========================================
+          ORÇAMENTO INTELIGENTE (IA)
+          ========================================== */}
+      {orcamentoInteligente && (
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '20px',
+          borderRadius: '12px',
+          border: `1px solid ${orcamentoInteligente.status === 'estourado' ? 'rgba(217,74,74,0.2)' : 'rgba(45,138,78,0.2)'}`,
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ 
+            fontSize: 'clamp(12px, 2vw, 14px)', 
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: '600',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            🧠 Orçamento Inteligente
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '16px',
+            marginBottom: '12px'
+          }}>
+            <div>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>Gasto Real (Mês)</p>
+              <p style={{ color: '#fff', fontSize: '22px', fontWeight: '700', margin: 0 }}>
+                {formatarMoeda(orcamentoInteligente.gastoReal)}
+              </p>
+            </div>
+            <div>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>Previsão Inteligente</p>
+              <p style={{ color: '#3a7abd', fontSize: '22px', fontWeight: '700', margin: 0 }}>
+                {formatarMoeda(orcamentoInteligente.previsaoTotal)}
+              </p>
+            </div>
+            <div>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>Status</p>
+              <p style={{
+                color: orcamentoInteligente.status === 'estourado' ? '#d94a4a' : '#2d8a4e',
+                fontSize: '18px',
+                fontWeight: '600',
+                margin: 0
+              }}>
+                {orcamentoInteligente.status === 'estourado' ? '⚠️ Estourado' : '✅ Dentro do previsto'}
+              </p>
+            </div>
+            <div>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>% da Previsão</p>
+              <p style={{
+                color: orcamentoInteligente.percentual > 80 ? '#ed8936' : '#2d8a4e',
+                fontSize: '22px',
+                fontWeight: '700',
+                margin: 0
+              }}>
+                {orcamentoInteligente.percentual.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+          
+          <p style={{
+            color: orcamentoInteligente.status === 'estourado' ? '#fc8181' : '#68d391',
+            fontSize: '14px',
+            margin: '4px 0 0 0'
+          }}>
+            {orcamentoInteligente.sugestao}
+          </p>
+        </div>
+      )}
+
+      {/* ==========================================
+          TOP 5 CATEGORIAS - PREVISÃO IA
+          ========================================== */}
+      {orcamentoInteligente && orcamentoInteligente.top5Categorias.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          padding: '15px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ 
+            fontSize: 'clamp(12px, 2vw, 14px)', 
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: '600',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            🔮 Top 5 Categorias - Previsão IA
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '10px'
+          }}>
+            {orcamentoInteligente.top5Categorias.map((cat, index) => (
+              <div key={index} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                borderLeft: `3px solid ${cat.tendencia === 'crescente' ? '#fc8181' : cat.tendencia === 'decrescente' ? '#48bb78' : '#63b3ed'}`
+              }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', margin: 0 }}>
+                  {index + 1}º - {cat.tendencia === 'crescente' ? '📈' : cat.tendencia === 'decrescente' ? '📉' : '➡️'}
+                </p>
+                <p style={{ color: '#fff', fontSize: '15px', fontWeight: '600', margin: '2px 0 0 0' }}>
+                  {cat.categoria}
+                </p>
+                <p style={{ color: '#3a7abd', fontSize: '14px', fontWeight: '600', margin: '2px 0 0 0' }}>
+                  {formatarMoeda(cat.previsao)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          ANOMALIAS DETECTADAS (IA)
+          ========================================== */}
+      {anomalias.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(217,74,74,0.05)',
+          padding: '15px',
+          borderRadius: '12px',
+          border: '1px solid rgba(217,74,74,0.15)',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ 
+            fontSize: 'clamp(12px, 2vw, 14px)', 
+            color: '#fc8181',
+            fontWeight: '600',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            ⚠️ Anomalias Detectadas
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            {anomalias.slice(0, 5).map((item, index) => (
+              <div key={index} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                borderLeft: `3px solid ${item.tipo === 'acima' ? '#fc8181' : '#48bb78'}`
+              }}>
+                <div>
+                  <span style={{ color: '#fff', fontSize: '13px' }}>
+                    {item.descricao}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginLeft: '10px' }}>
+                    {item.categoria}
+                  </span>
+                </div>
+                <span style={{
+                  color: item.tipo === 'acima' ? '#fc8181' : '#48bb78',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}>
+                  {formatarMoeda(item.valor)}
+                  <span style={{ fontSize: '10px', marginLeft: '4px' }}>
+                    ({item.tipo === 'acima' ? '↑ acima da média' : '↓ abaixo da média'})
+                  </span>
+                </span>
+              </div>
+            ))}
+            {anomalias.length > 5 && (
+              <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', margin: '4px 0 0 0' }}>
+                +{anomalias.length - 5} outras anomalias detectadas
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          SCORE DE SAÚDE FINANCEIRA
           ========================================== */}
       {scoreSaude && (
         <div style={{
@@ -600,7 +856,7 @@ function Dashboard() {
       )}
 
       {/* ==========================================
-          PREVISÃO E ORÇAMENTO (CARDS VISUAIS)
+          PREVISÃO E ORÇAMENTO
           ========================================== */}
       {previsao && orcamento && (
         <div style={{
@@ -609,7 +865,6 @@ function Dashboard() {
           gap: '12px',
           marginBottom: '20px'
         }}>
-          {/* Card: Previsão */}
           <div style={{
             backgroundColor: 'rgba(255,255,255,0.05)',
             padding: '16px 20px',
@@ -632,7 +887,6 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Card: Orçamento */}
           <div style={{
             backgroundColor: 'rgba(255,255,255,0.05)',
             padding: '16px 20px',
@@ -683,7 +937,6 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Card: Velocidade */}
           <div style={{
             backgroundColor: 'rgba(255,255,255,0.05)',
             padding: '16px 20px',
@@ -706,7 +959,6 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Card: Ticket Médio */}
           <div style={{
             backgroundColor: 'rgba(255,255,255,0.05)',
             padding: '16px 20px',
@@ -732,7 +984,7 @@ function Dashboard() {
       )}
 
       {/* ==========================================
-          SUGESTÕES DE ECONOMIA (CARDS VISUAIS)
+          SUGESTÕES DE ECONOMIA
           ========================================== */}
       {sugestoes.length > 0 && (
         <div style={{
