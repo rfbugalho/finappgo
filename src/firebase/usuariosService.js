@@ -11,7 +11,11 @@ import {
   orderBy
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import { 
+  createUserWithEmailAndPassword, 
+  sendPasswordResetEmail,
+  signOut 
+} from 'firebase/auth'
 
 const COLLECTION_NAME = 'usuarios'
 
@@ -22,7 +26,6 @@ export const registrarOuBuscarUsuario = async (user) => {
   try {
     if (!user) throw new Error('Usuário não informado')
 
-    // Verificar se o usuário já existe no Firestore
     const q = query(
       collection(db, COLLECTION_NAME),
       where('uid', '==', user.uid)
@@ -30,7 +33,6 @@ export const registrarOuBuscarUsuario = async (user) => {
     const querySnapshot = await getDocs(q)
 
     if (!querySnapshot.empty) {
-      // Usuário já existe, retornar dados
       let usuario = {}
       querySnapshot.forEach((doc) => {
         usuario = { id: doc.id, ...doc.data() }
@@ -38,7 +40,6 @@ export const registrarOuBuscarUsuario = async (user) => {
       return usuario
     }
 
-    // Usuário não existe, criar novo registro
     const nome = user.displayName || user.email?.split('@')[0] || 'Usuário'
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       uid: user.uid,
@@ -83,18 +84,21 @@ export const buscarUsuarios = async () => {
 }
 
 // ==========================================
-// CONVIDAR USUÁRIO (COM ENVIO DE E-MAIL)
+// CONVIDAR USUÁRIO (SEM LOGAR AUTOMATICAMENTE)
 // ==========================================
-export const convidarUsuario = async (email, senha, nome, permissao = 'visualizador') => {
+export const convidarUsuario = async (email, nome, permissao = 'visualizador') => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // 1. Criar usuário no Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, senha)
+    // 1. Gerar senha temporária forte
+    const senhaTemp = gerarSenhaTemporaria()
+
+    // 2. Criar usuário no Auth (isso loga automaticamente, mas vamos deslogar depois)
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senhaTemp)
     const novoUsuario = userCredential.user
 
-    // 2. Salvar no Firestore
+    // 3. Salvar no Firestore
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       uid: novoUsuario.uid,
       nome: nome,
@@ -106,7 +110,7 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
       criadoEm: new Date().toISOString()
     })
 
-    // 3. Enviar e-mail de boas-vindas com link para definir senha
+    // 4. ⭐ ENVIAR E-MAIL DE REDEFINIÇÃO DE SENHA
     try {
       await sendPasswordResetEmail(auth, email, {
         url: 'https://finappgo-bugalho.vercel.app/login',
@@ -114,8 +118,15 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
       })
       console.log(`📧 E-mail de convite enviado para ${email}`)
     } catch (emailError) {
-      console.warn('⚠️ Não foi possível enviar e-mail de convite:', emailError)
-      // Não falha o convite se o e-mail falhar
+      console.warn('⚠️ Erro ao enviar e-mail:', emailError)
+    }
+
+    // 5. ⭐ DESLOGAR O USUÁRIO CRIADO E VOLTAR AO USUÁRIO ORIGINAL
+    try {
+      await signOut(auth) // Desloga o usuário criado
+      await user.reload() // Recarrega o usuário original
+    } catch (signOutError) {
+      console.warn('⚠️ Erro ao deslogar usuário:', signOutError)
     }
 
     return { 
@@ -124,7 +135,7 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
       nome, 
       email, 
       permissao,
-      senhaTemporaria: senha // Mostrar apenas uma vez
+      senhaTemporaria: senhaTemp
     }
   } catch (error) {
     console.error('Erro ao convidar usuário:', error)
@@ -183,4 +194,23 @@ export const gerarSenhaTemporaria = () => {
     senha += todos.charAt(Math.floor(Math.random() * todos.length))
   }
   return senha
+}
+
+// ==========================================
+// REENVIAR CONVITE
+// ==========================================
+export const reenviarConvite = async (email) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    await sendPasswordResetEmail(auth, email, {
+      url: 'https://finappgo-bugalho.vercel.app/login',
+      handleCodeInApp: false
+    })
+    return true
+  } catch (error) {
+    console.error('Erro ao reenviar convite:', error)
+    throw error
+  }
 }
