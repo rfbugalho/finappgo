@@ -15,6 +15,51 @@ import { createUserWithEmailAndPassword } from 'firebase/auth'
 
 const COLLECTION_NAME = 'usuarios'
 
+// ==========================================
+// REGISTRAR OU BUSCAR USUÁRIO
+// ==========================================
+export const registrarOuBuscarUsuario = async (user) => {
+  try {
+    if (!user) throw new Error('Usuário não informado')
+
+    // Verificar se o usuário já existe no Firestore
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('uid', '==', user.uid)
+    )
+    const querySnapshot = await getDocs(q)
+
+    if (!querySnapshot.empty) {
+      // Usuário já existe, retornar dados
+      let usuario = {}
+      querySnapshot.forEach((doc) => {
+        usuario = { id: doc.id, ...doc.data() }
+      })
+      return usuario
+    }
+
+    // Usuário não existe, criar novo registro
+    const nome = user.displayName || user.email?.split('@')[0] || 'Usuário'
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      uid: user.uid,
+      nome: nome,
+      email: user.email,
+      permissao: 'admin',
+      status: 'ativo',
+      userId: user.uid,
+      criadoEm: new Date().toISOString()
+    })
+
+    return { id: docRef.id, uid: user.uid, nome, email: user.email, permissao: 'admin' }
+  } catch (error) {
+    console.error('Erro ao registrar ou buscar usuário:', error)
+    throw error
+  }
+}
+
+// ==========================================
+// BUSCAR USUÁRIOS
+// ==========================================
 export const buscarUsuarios = async () => {
   try {
     const user = auth.currentUser
@@ -37,6 +82,9 @@ export const buscarUsuarios = async () => {
   }
 }
 
+// ==========================================
+// CONVIDAR USUÁRIO
+// ==========================================
 export const convidarUsuario = async (email, senha, nome, permissao = 'visualizador') => {
   try {
     const user = auth.currentUser
@@ -63,6 +111,9 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
   }
 }
 
+// ==========================================
+// ATUALIZAR USUÁRIO
+// ==========================================
 export const atualizarUsuario = async (id, dados) => {
   try {
     const user = auth.currentUser
@@ -80,6 +131,9 @@ export const atualizarUsuario = async (id, dados) => {
   }
 }
 
+// ==========================================
+// EXCLUIR USUÁRIO
+// ==========================================
 export const excluirUsuario = async (id) => {
   try {
     const user = auth.currentUser
@@ -94,6 +148,9 @@ export const excluirUsuario = async (id) => {
   }
 }
 
+// ==========================================
+// GERAR SENHA TEMPORÁRIA
+// ==========================================
 export const gerarSenhaTemporaria = () => {
   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   const numeros = '0123456789'

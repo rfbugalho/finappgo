@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
+import { registrarOuBuscarUsuario } from '../firebase/usuariosService'
 
 function Login() {
   const navigate = useNavigate()
@@ -10,6 +11,7 @@ function Login() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+  const [resetando, setResetando] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -17,14 +19,22 @@ function Login() {
     setErro('')
 
     try {
-      // 👇 LOGIN REAL COM FIREBASE AUTH
-      await signInWithEmailAndPassword(auth, email, senha)
+      // 1. Fazer login no Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, senha)
+      const user = userCredential.user
+
+      // 2. Registrar ou buscar usuário no Firestore
+      try {
+        await registrarOuBuscarUsuario(user)
+      } catch (err) {
+        console.warn('Erro ao registrar usuário no Firestore:', err)
+      }
+
       setCarregando(false)
       navigate('/')
     } catch (error) {
       setCarregando(false)
       
-      // Tratamento de erros
       switch (error.code) {
         case 'auth/user-not-found':
           setErro('Usuário não encontrado. Verifique o e-mail.')
@@ -35,8 +45,38 @@ function Login() {
         case 'auth/invalid-email':
           setErro('E-mail inválido. Verifique o formato.')
           break
+        case 'auth/too-many-requests':
+          setErro('Muitas tentativas. Aguarde alguns minutos.')
+          break
         default:
           setErro('Erro ao fazer login. Tente novamente.')
+          console.error(error)
+      }
+    }
+  }
+
+  const handleResetSenha = async () => {
+    if (!email) {
+      alert('Por favor, digite seu e-mail antes de solicitar a redefinição de senha.')
+      return
+    }
+
+    setResetando(true)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      alert(`✅ E-mail de redefinição de senha enviado para ${email}`)
+      setResetando(false)
+    } catch (error) {
+      setResetando(false)
+      switch (error.code) {
+        case 'auth/user-not-found':
+          alert('❌ Usuário não encontrado com este e-mail.')
+          break
+        case 'auth/invalid-email':
+          alert('❌ E-mail inválido. Verifique o formato.')
+          break
+        default:
+          alert('❌ Erro ao enviar e-mail. Tente novamente.')
           console.error(error)
       }
     }
@@ -117,7 +157,7 @@ function Login() {
           <div style={{ marginBottom: '16px' }}>
             <label style={{
               display: 'block',
-              fontSize: '13px',
+              fontSize: '14px',
               fontWeight: '500',
               color: 'rgba(255,255,255,0.6)',
               marginBottom: '6px'
@@ -140,14 +180,16 @@ function Login() {
                 backgroundColor: 'rgba(255,255,255,0.05)',
                 color: '#ffffff'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#3a7abd'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
               required
             />
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <label style={{
               display: 'block',
-              fontSize: '13px',
+              fontSize: '14px',
               fontWeight: '500',
               color: 'rgba(255,255,255,0.6)',
               marginBottom: '6px'
@@ -170,8 +212,35 @@ function Login() {
                 backgroundColor: 'rgba(255,255,255,0.05)',
                 color: '#ffffff'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#3a7abd'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
               required
             />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '20px'
+          }}>
+            <input
+              type="checkbox"
+              id="manter-conectado"
+              style={{
+                width: '16px',
+                height: '16px',
+                accentColor: '#2d8a4e',
+                cursor: 'pointer'
+              }}
+            />
+            <label htmlFor="manter-conectado" style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.4)',
+              cursor: 'pointer'
+            }}>
+              Manter conectado
+            </label>
           </div>
 
           <button
@@ -193,6 +262,12 @@ function Login() {
               alignItems: 'center',
               gap: '8px'
             }}
+            onMouseEnter={(e) => {
+              if (!carregando) e.target.style.backgroundColor = '#1a6a3a'
+            }}
+            onMouseLeave={(e) => {
+              if (!carregando) e.target.style.backgroundColor = '#2d8a4e'
+            }}
           >
             {carregando ? (
               <>
@@ -212,6 +287,52 @@ function Login() {
             )}
           </button>
         </form>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginTop: '16px',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            type="button"
+            onClick={handleResetSenha}
+            disabled={resetando}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: resetando ? 'rgba(255,255,255,0.2)' : '#3a7abd',
+              fontSize: '14px',
+              cursor: resetando ? 'not-allowed' : 'pointer',
+              textDecoration: 'underline',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (!resetando) e.target.style.color = '#5a9add'
+            }}
+            onMouseLeave={(e) => {
+              if (!resetando) e.target.style.color = '#3a7abd'
+            }}
+          >
+            {resetando ? '⏳ Enviando...' : '🔑 Esqueceu sua senha?'}
+          </button>
+        </div>
+
+        <div style={{
+          marginTop: '30px',
+          paddingTop: '20px',
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.2)',
+            margin: 0
+          }}>
+            FinAppGO © 2026 · Controle Financeiro Pessoal
+          </p>
+        </div>
 
         <style>{`
           @keyframes spin {
