@@ -72,7 +72,7 @@ function Veiculos() {
     valor: ''
   })
 
-  const tiposCombustivel = ['gasolina', 'etanol', 'diesel', 'gnv']
+  const tiposCombustivel = ['Gasolina Comum','Gasolina Aditivada','Gasolina Premium', 'Etanol', 'Diesel', 'GNV']
   const tiposManutencao = ['revisao', 'ipva', 'licenciamento', 'estacionamento', 'pedagio', 'outros']
 
   // ==========================================
