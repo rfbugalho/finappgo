@@ -11,7 +11,7 @@ import {
   orderBy
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 
 const COLLECTION_NAME = 'usuarios'
 
@@ -83,16 +83,18 @@ export const buscarUsuarios = async () => {
 }
 
 // ==========================================
-// CONVIDAR USUÁRIO
+// CONVIDAR USUÁRIO (COM ENVIO DE E-MAIL)
 // ==========================================
 export const convidarUsuario = async (email, senha, nome, permissao = 'visualizador') => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
+    // 1. Criar usuário no Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, senha)
     const novoUsuario = userCredential.user
 
+    // 2. Salvar no Firestore
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       uid: novoUsuario.uid,
       nome: nome,
@@ -104,7 +106,26 @@ export const convidarUsuario = async (email, senha, nome, permissao = 'visualiza
       criadoEm: new Date().toISOString()
     })
 
-    return { id: docRef.id, uid: novoUsuario.uid, nome, email, permissao }
+    // 3. Enviar e-mail de boas-vindas com link para definir senha
+    try {
+      await sendPasswordResetEmail(auth, email, {
+        url: 'https://finappgo-bugalho.vercel.app/login',
+        handleCodeInApp: false
+      })
+      console.log(`📧 E-mail de convite enviado para ${email}`)
+    } catch (emailError) {
+      console.warn('⚠️ Não foi possível enviar e-mail de convite:', emailError)
+      // Não falha o convite se o e-mail falhar
+    }
+
+    return { 
+      id: docRef.id, 
+      uid: novoUsuario.uid, 
+      nome, 
+      email, 
+      permissao,
+      senhaTemporaria: senha // Mostrar apenas uma vez
+    }
   } catch (error) {
     console.error('Erro ao convidar usuário:', error)
     throw error

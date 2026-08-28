@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
 import { useConfig } from '../contexts/ConfigContext'
+import { useAuth } from '../contexts/AuthContext'
 import Notificacoes from './Notificacoes'
 import { buscarNotificacoes } from '../firebase/notificacoesService'
 
@@ -70,6 +71,7 @@ function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { config } = useConfig()
+  const { user } = useAuth()
 
   // Detectar se é mobile
   useEffect(() => {
@@ -107,7 +109,6 @@ function Layout({ children }) {
     }
     carregarNotificacoes()
 
-    // Recarregar a cada 30 segundos
     const interval = setInterval(carregarNotificacoes, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -332,7 +333,7 @@ function Layout({ children }) {
         height: '100vh',
         transition: 'background-color 0.3s ease'
       }}>
-        {/* HEADER */}
+        {/* HEADER SUPERIOR */}
         <header style={{
           backgroundColor: config?.tema === 'light' ? '#ffffff' : '#1a2b4a',
           padding: 'clamp(8px, 1.5vw, 15px) clamp(12px, 2vw, 30px)',
@@ -415,7 +416,7 @@ function Layout({ children }) {
               )}
             </div>
             
-            {/* USUÁRIO */}
+            {/* ⭐ USUÁRIO DINÂMICO */}
             <span style={{ 
               color: config?.tema === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)',
               fontSize: 'clamp(10px, 1.5vw, 14px)',
@@ -429,7 +430,7 @@ function Layout({ children }) {
                 display: isMobile ? 'none' : 'inline',
                 fontSize: 'clamp(10px, 1.2vw, 14px)'
               }}>
-                {isMobile ? '' : 'rafaelbugalho@finappgo.com.br'}
+                {user?.displayName || user?.email?.split('@')[0] || 'Usuário'}
               </span>
             </span>
             
@@ -460,7 +461,7 @@ function Layout({ children }) {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
+        {/* ÁREA DE CONTEÚDO */}
         <main style={{
           flex: 1,
           padding: isMobile ? 'clamp(8px, 2vw, 15px)' : 'clamp(15px, 3vw, 30px)',
