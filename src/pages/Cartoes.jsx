@@ -20,22 +20,25 @@ function Cartoes() {
   const [contas, setContas] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [carregandoContas, setCarregandoContas] = useState(true)
+  
+  // ==========================================
+  // ESTADOS PARA FATURA DETALHADA
+  // ==========================================
   const [cartaoSelecionado, setCartaoSelecionado] = useState(null)
   const [despesas, setDespesas] = useState([])
-  const [pagamentos, setPagamentos] = useState([])
-  const [mostrarDespesas, setMostrarDespesas] = useState(false)
+  const [mostrarFatura, setMostrarFatura] = useState(false)
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear())
   
-  const [despesasConsolidadas, setDespesasConsolidadas] = useState([])
+  // ==========================================
+  // ESTADOS PARA GRID CONSOLIDADO
+  // ==========================================
   const [dadosConsolidados, setDadosConsolidados] = useState([])
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
-  const [cartaoSelecionadoDetalhe, setCartaoSelecionadoDetalhe] = useState(null)
-  const [mostrarDetalheFatura, setMostrarDetalheFatura] = useState(false)
-  const [mesDetalhe, setMesDetalhe] = useState(new Date().getMonth() + 1)
-  const [anoDetalhe, setAnoDetalhe] = useState(new Date().getFullYear())
 
-  // Modal Cartão
+  // ==========================================
+  // MODAL CARTÃO
+  // ==========================================
   const [modalCartaoAberto, setModalCartaoAberto] = useState(false)
   const [modalEdicaoCartao, setModalEdicaoCartao] = useState(false)
   const [formCartao, setFormCartao] = useState({
@@ -47,7 +50,9 @@ function Cartoes() {
     dataVencimento: '25'
   })
 
-  // Modal Despesa
+  // ==========================================
+  // MODAL DESPESA
+  // ==========================================
   const [modalDespesaAberto, setModalDespesaAberto] = useState(false)
   const [modalEdicaoDespesa, setModalEdicaoDespesa] = useState(false)
   const [formDespesa, setFormDespesa] = useState({
@@ -62,7 +67,9 @@ function Cartoes() {
     anoFatura: new Date().getFullYear()
   })
 
-  // Modal Pagamento Fatura
+  // ==========================================
+  // MODAL PAGAMENTO
+  // ==========================================
   const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false)
   const [formPagamento, setFormPagamento] = useState({
     cartaoId: '',
@@ -105,11 +112,11 @@ function Cartoes() {
 
   const carregarDadosConsolidados = async () => {
     const despesas = await buscarDespesasConsolidadas(anoSelecionado)
-    setDespesasConsolidadas(despesas)
     
     const consolidado = {}
     cartoes.forEach(cartao => {
       consolidado[cartao.id] = {
+        id: cartao.id,
         nome: cartao.nome,
         bandeira: cartao.bandeira,
         limiteTotal: cartao.limiteTotal || 0,
@@ -137,7 +144,6 @@ function Cartoes() {
       }, 0)
       const percentual = totalGeral > 0 ? (total / totalGeral) * 100 : 0
       return {
-        id: key,
         ...item,
         total,
         percentual
@@ -233,19 +239,18 @@ function Cartoes() {
   }
 
   // ==========================================
-  // FUNÇÕES DE DESPESA
+  // FUNÇÕES DE FATURA
   // ==========================================
-  const verDespesas = async (cartaoId) => {
+  const verFatura = async (cartaoId) => {
     const cartao = cartoes.find(c => c.id === cartaoId)
+    if (!cartao) return
     setCartaoSelecionado(cartao)
     const dados = await buscarDespesasCartao(cartaoId, filtroMes, filtroAno)
     setDespesas(dados)
-    const pagamentosDados = await buscarPagamentosCartao(cartaoId)
-    setPagamentos(pagamentosDados)
-    setMostrarDespesas(true)
+    setMostrarFatura(true)
   }
 
-  const carregarDespesasFiltradas = async () => {
+  const carregarFatura = async () => {
     if (cartaoSelecionado) {
       const dados = await buscarDespesasCartao(cartaoSelecionado.id, filtroMes, filtroAno)
       setDespesas(dados)
@@ -253,11 +258,14 @@ function Cartoes() {
   }
 
   useEffect(() => {
-    if (mostrarDespesas && cartaoSelecionado) {
-      carregarDespesasFiltradas()
+    if (mostrarFatura && cartaoSelecionado) {
+      carregarFatura()
     }
   }, [filtroMes, filtroAno])
 
+  // ==========================================
+  // FUNÇÕES DE DESPESA
+  // ==========================================
   const abrirModalNovaDespesa = (cartaoId) => {
     const hoje = new Date()
     setFormDespesa({
@@ -423,30 +431,6 @@ function Cartoes() {
   }
 
   // ==========================================
-  // FUNÇÕES DE DETALHE DA FATURA
-  // ==========================================
-  const abrirDetalheFatura = async (cartaoId) => {
-    const cartao = cartoes.find(c => c.id === cartaoId)
-    setCartaoSelecionadoDetalhe(cartao)
-    const dados = await buscarDespesasCartao(cartaoId, mesDetalhe, anoDetalhe)
-    setDespesas(dados)
-    setMostrarDetalheFatura(true)
-  }
-
-  const carregarDetalheFatura = async () => {
-    if (cartaoSelecionadoDetalhe) {
-      const dados = await buscarDespesasCartao(cartaoSelecionadoDetalhe.id, mesDetalhe, anoDetalhe)
-      setDespesas(dados)
-    }
-  }
-
-  useEffect(() => {
-    if (mostrarDetalheFatura && cartaoSelecionadoDetalhe) {
-      carregarDetalheFatura()
-    }
-  }, [mesDetalhe, anoDetalhe])
-
-  // ==========================================
   // FORMATADORES
   // ==========================================
   const getBandeiraEmoji = (bandeira) => {
@@ -572,14 +556,8 @@ function Cartoes() {
                       padding: '8px 12px', 
                       textAlign: 'right', 
                       color: 'rgba(255,255,255,0.4)',
-                      fontSize: '11px',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      setMesDetalhe(idx + 1)
-                      setAnoDetalhe(anoSelecionado)
-                    }}
-                    >
+                      fontSize: '11px'
+                    }}>
                       {mes.substring(0, 3)}
                     </th>
                   ))}
@@ -589,20 +567,19 @@ function Cartoes() {
                   <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
                     % Rec
                   </th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                    Ações
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {dadosConsolidados.map((item) => (
-                  <tr 
-                    key={item.id} 
-                    style={{ 
-                      borderBottom: '1px solid rgba(255,255,255,0.03)',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    onClick={() => abrirDetalheFatura(item.id)}
+                  <tr key={item.id} style={{ 
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <td style={{ padding: '8px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -635,6 +612,52 @@ function Cartoes() {
                     }}>
                       {item.percentual > 0 ? item.percentual.toFixed(2) + '%' : '-'}
                     </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => verFatura(item.id)}
+                          style={{
+                            backgroundColor: 'rgba(58,122,189,0.2)',
+                            color: '#3a7abd',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px'
+                          }}
+                        >
+                          📋 Fatura
+                        </button>
+                        <button
+                          onClick={() => abrirModalNovaDespesa(item.id)}
+                          style={{
+                            backgroundColor: 'rgba(45,138,78,0.2)',
+                            color: '#2d8a4e',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px'
+                          }}
+                        >
+                          ➕
+                        </button>
+                        <button
+                          onClick={() => abrirModalEditarCartao(cartoes.find(c => c.id === item.id))}
+                          style={{
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            color: 'rgba(255,255,255,0.6)',
+                            border: 'none',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px'
+                          }}
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)' }}>
@@ -657,21 +680,235 @@ function Cartoes() {
                   <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '600', color: '#fff' }}>
                     {formatarMoeda(dadosConsolidados.reduce((acc, item) => acc + item.total, 0))}
                   </td>
-                  <td style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
-                    -
-                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>-</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>-</td>
                 </tr>
               </tbody>
             </table>
             <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', marginTop: '8px', textAlign: 'center' }}>
-              💡 Clique em qualquer cartão para ver o detalhamento mensal
+              💡 Clique em "Fatura" para ver o detalhamento mensal
             </p>
           </div>
         )}
       </div>
 
       {/* ==========================================
-          MODAL - CARTÃO
+          MODAL - FATURA DETALHADA
+          ========================================== */}
+      {mostrarFatura && cartaoSelecionado && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)',
+          padding: '20px'
+        }} onClick={() => setMostrarFatura(false)}>
+          <div style={{
+            backgroundColor: '#1a2b4a',
+            padding: '30px',
+            borderRadius: '16px',
+            maxWidth: '1100px',
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.08)',
+            maxHeight: '85vh',
+            overflowY: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Cabeçalho */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', color: '#ffffff', margin: 0 }}>
+                  📋 Fatura - {cartaoSelecionado.nome}
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  {getNomeMes(filtroMes)}/{filtroAno} · {despesas.length} despesa(s)
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => abrirModalPagamentoFatura(cartaoSelecionado.id)}
+                  style={{
+                    backgroundColor: 'rgba(159,122,234,0.2)',
+                    color: '#9f7aea',
+                    border: '1px solid rgba(159,122,234,0.2)',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  💳 Pagar
+                </button>
+                <button
+                  onClick={() => setMostrarFatura(false)}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.6)',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  ✕ Fechar
+                </button>
+              </div>
+            </div>
+
+            {/* Filtros */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginBottom: '16px',
+              padding: '12px 16px',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              flexWrap: 'wrap',
+              alignItems: 'center'
+            }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Filtrar por:</span>
+              <select
+                value={filtroMes}
+                onChange={(e) => setFiltroMes(parseInt(e.target.value))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  fontSize: '13px'
+                }}
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                  <option key={m} value={m} style={{ backgroundColor: '#1a2b4a' }}>
+                    {getNomeMes(m)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filtroAno}
+                onChange={(e) => setFiltroAno(parseInt(e.target.value))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  fontSize: '13px'
+                }}
+              >
+                {[2024, 2025, 2026, 2027].map(a => (
+                  <option key={a} value={a} style={{ backgroundColor: '#1a2b4a' }}>{a}</option>
+                ))}
+              </select>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginLeft: 'auto' }}>
+                Total da Fatura: <strong style={{ color: '#fc8181' }}>{formatarMoeda(totalFatura)}</strong>
+              </span>
+            </div>
+
+            {/* Tabela de Despesas */}
+            {despesas.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)' }}>Nenhuma despesa nesta fatura</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Data</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Categoria</th>
+                      <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {despesas.map(despesa => (
+                      <tr key={despesa.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '10px' }}>{formatarData(despesa.data)}</td>
+                        <td style={{ padding: '10px' }}>{despesa.descricao}</td>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            color: 'rgba(255,255,255,0.6)'
+                          }}>
+                            {despesa.categoria || '-'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: '#fc8181' }}>
+                          {formatarMoeda(despesa.valor)}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          {despesa.parcelado ? (
+                            <span style={{
+                              backgroundColor: 'rgba(58,122,189,0.2)',
+                              color: '#3a7abd',
+                              padding: '2px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px'
+                            }}>
+                              {despesa.parcelaAtual || 1}/{despesa.totalParcelas}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>À vista</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => abrirModalEditarDespesa(despesa)}
+                            style={{
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              color: 'rgba(255,255,255,0.6)',
+                              border: 'none',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              marginRight: '4px'
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => excluirDespesa(despesa.id, despesa.cartaoId)}
+                            style={{
+                              backgroundColor: 'rgba(217,74,74,0.2)',
+                              color: '#d94a4a',
+                              border: 'none',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL - CARTÃO (NOVO/EDITAR)
           ========================================== */}
       {modalCartaoAberto && (
         <div style={{
@@ -864,7 +1101,7 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - DESPESA (para quando precisar)
+          MODAL - DESPESA
           ========================================== */}
       {modalDespesaAberto && (
         <div style={{
