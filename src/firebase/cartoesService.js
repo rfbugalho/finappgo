@@ -115,7 +115,6 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
-      // Usar mesFatura e anoFatura se existirem, senão usar a data da compra
       const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       
@@ -173,7 +172,6 @@ export const adicionarDespesaCartao = async (despesa) => {
       valorParcela = despesa.valor / totalParcelas
     }
 
-    // Garantir que mesFatura e anoFatura estão definidos
     const mesFatura = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
     const anoFatura = despesa.anoFatura || new Date(despesa.data).getFullYear()
 
@@ -190,7 +188,11 @@ export const adicionarDespesaCartao = async (despesa) => {
       criadoEm: new Date().toISOString()
     })
 
-    await atualizarLimiteCartao(despesa.cartaoId)
+    try {
+      await atualizarLimiteCartao(despesa.cartaoId)
+    } catch (limiteError) {
+      console.warn('Erro ao atualizar limite do cartão (não crítico):', limiteError)
+    }
 
     return { id: docRef.id, ...despesa }
   } catch (error) {
@@ -210,7 +212,11 @@ export const atualizarDespesaCartao = async (id, despesa) => {
       atualizadoEm: new Date().toISOString()
     })
 
-    await atualizarLimiteCartao(despesa.cartaoId)
+    try {
+      await atualizarLimiteCartao(despesa.cartaoId)
+    } catch (limiteError) {
+      console.warn('Erro ao atualizar limite do cartão (não crítico):', limiteError)
+    }
 
     return { id, ...despesa }
   } catch (error) {
@@ -228,7 +234,11 @@ export const excluirDespesaCartao = async (id, cartaoId) => {
     await deleteDoc(docRef)
 
     if (cartaoId) {
-      await atualizarLimiteCartao(cartaoId)
+      try {
+        await atualizarLimiteCartao(cartaoId)
+      } catch (limiteError) {
+        console.warn('Erro ao atualizar limite do cartão (não crítico):', limiteError)
+      }
     }
 
     return id
@@ -282,7 +292,11 @@ export const registrarPagamentoFatura = async (pagamento) => {
       criadoEm: new Date().toISOString()
     })
 
-    await atualizarLimiteCartao(pagamento.cartaoId)
+    try {
+      await atualizarLimiteCartao(pagamento.cartaoId)
+    } catch (limiteError) {
+      console.warn('Erro ao atualizar limite do cartão (não crítico):', limiteError)
+    }
 
     return {
       id: docRef.id,
@@ -334,10 +348,14 @@ export const atualizarLimiteCartao = async (cartaoId) => {
 
     const cartaoRef = doc(db, COLLECTION_NAME, cartaoId)
     const cartaoDoc = await getDoc(cartaoRef)
-    if (!cartaoDoc.exists()) return
+    if (!cartaoDoc.exists()) {
+      console.warn('Cartão não encontrado:', cartaoId)
+      return
+    }
 
     const cartao = cartaoDoc.data()
     
+    // Buscar todas as despesas do cartão
     const q = query(
       collection(db, DESPESAS_COLLECTION),
       where('userId', '==', user.uid),
@@ -359,6 +377,7 @@ export const atualizarLimiteCartao = async (cartaoId) => {
       }
     })
 
+    // Buscar pagamentos realizados
     const qPagamentos = query(
       collection(db, PAGAMENTOS_COLLECTION),
       where('userId', '==', user.uid),
