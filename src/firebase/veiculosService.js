@@ -1,3 +1,4 @@
+// src/firebase/veiculosService.js
 import { 
   collection, 
   addDoc, 
@@ -103,7 +104,7 @@ export const buscarAbastecimentos = async (veiculoId) => {
       collection(db, ABASTECIMENTOS_COLLECTION), 
       where('userId', '==', user.uid),
       where('veiculoId', '==', veiculoId),
-      orderBy('data', 'desc')
+      orderBy('data', 'desc') // ⭐ ORDENADO POR DATA (MAIS RECENTE PRIMEIRO)
     )
     const querySnapshot = await getDocs(q)
     const lista = []
@@ -126,15 +127,21 @@ export const adicionarAbastecimento = async (abastecimento) => {
     const kmRodados = abastecimento.kmFinal - abastecimento.kmInicial
     const kmPorLitro = abastecimento.litros > 0 ? kmRodados / abastecimento.litros : 0
 
+    // Calcular preço por litro (se valor e litros forem informados)
+    let precoPorLitro = 0
+    if (abastecimento.litros > 0 && abastecimento.valor > 0) {
+      precoPorLitro = abastecimento.valor / abastecimento.litros
+    }
+
     const docRef = await addDoc(collection(db, ABASTECIMENTOS_COLLECTION), {
       ...abastecimento,
       userId: user.uid,
       kmRodados: parseFloat(kmRodados.toFixed(2)),
       kmPorLitro: parseFloat(kmPorLitro.toFixed(2)),
+      precoPorLitro: parseFloat(precoPorLitro.toFixed(3)), // ⭐ NOVO: PREÇO POR LITRO
       criadoEm: new Date().toISOString()
     })
 
-    // Atualizar KM atual do veículo
     await atualizarKmVeiculo(abastecimento.veiculoId, abastecimento.kmFinal)
 
     return { id: docRef.id, ...abastecimento }
@@ -151,16 +158,21 @@ export const atualizarAbastecimento = async (id, abastecimento) => {
 
     const kmRodados = abastecimento.kmFinal - abastecimento.kmInicial
     const kmPorLitro = abastecimento.litros > 0 ? kmRodados / abastecimento.litros : 0
+    
+    let precoPorLitro = 0
+    if (abastecimento.litros > 0 && abastecimento.valor > 0) {
+      precoPorLitro = abastecimento.valor / abastecimento.litros
+    }
 
     const docRef = doc(db, ABASTECIMENTOS_COLLECTION, id)
     await updateDoc(docRef, {
       ...abastecimento,
       kmRodados: parseFloat(kmRodados.toFixed(2)),
       kmPorLitro: parseFloat(kmPorLitro.toFixed(2)),
+      precoPorLitro: parseFloat(precoPorLitro.toFixed(3)),
       atualizadoEm: new Date().toISOString()
     })
 
-    // Atualizar KM atual do veículo (buscar o último abastecimento)
     await atualizarKmVeiculo(abastecimento.veiculoId)
 
     return { id, ...abastecimento }
@@ -178,7 +190,6 @@ export const excluirAbastecimento = async (id, veiculoId) => {
     const docRef = doc(db, ABASTECIMENTOS_COLLECTION, id)
     await deleteDoc(docRef)
 
-    // Atualizar KM atual do veículo
     await atualizarKmVeiculo(veiculoId)
 
     return id
@@ -275,19 +286,16 @@ export const atualizarKmVeiculo = async (veiculoId, kmAtual = null) => {
     const veiculoRef = doc(db, VEICULOS_COLLECTION, veiculoId)
     
     if (kmAtual !== null) {
-      // Atualizar com o KM fornecido
       await updateDoc(veiculoRef, {
         kmAtual: kmAtual,
         atualizadoEm: new Date().toISOString()
       })
     } else {
-      // Buscar o último abastecimento para obter o KM
       const q = query(
         collection(db, ABASTECIMENTOS_COLLECTION),
         where('userId', '==', user.uid),
         where('veiculoId', '==', veiculoId),
-        orderBy('data', 'desc'),
-        orderBy('kmFinal', 'desc')
+        orderBy('data', 'desc')
       )
       const querySnapshot = await getDocs(q)
       if (!querySnapshot.empty) {

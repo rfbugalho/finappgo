@@ -13,6 +13,7 @@ import {
   atualizarManutencao,
   excluirManutencao
 } from '../firebase/veiculosService'
+import { formatarMoeda, formatarData } from '../utils/formatters'
 
 function Veiculos() {
   // ==========================================
@@ -72,7 +73,7 @@ function Veiculos() {
     valor: ''
   })
 
-  const tiposCombustivel = ['Gasolina Comum','Gasolina Aditivada','Gasolina Premium', 'Etanol', 'Diesel', 'GNV']
+  const tiposCombustivel = ['gasolina', 'etanol', 'diesel', 'gnv']
   const tiposManutencao = ['revisao', 'ipva', 'licenciamento', 'estacionamento', 'pedagio', 'outros']
 
   // ==========================================
@@ -224,6 +225,11 @@ function Veiculos() {
       return
     }
 
+    if (isNaN(valor) || valor <= 0) {
+      alert('Digite um valor válido para o abastecimento.')
+      return
+    }
+
     const dadosParaSalvar = {
       veiculoId: formAbastecimento.veiculoId,
       data: formAbastecimento.data,
@@ -344,10 +350,6 @@ function Veiculos() {
   // ==========================================
   // FORMATADORES
   // ==========================================
-  const formatarMoeda = (valor) => {
-    return `R$ ${(valor || 0).toFixed(2).replace('.', ',')}`
-  }
-
   const formatarData = (data) => {
     if (!data) return '-'
     const partes = data.split('-')
@@ -402,7 +404,7 @@ function Veiculos() {
         gridTemplateColumns: veiculoSelecionado ? '1fr 2fr' : '1fr',
         gap: '20px'
       }}>
-        {/* COLUDA ESQUERDA: LISTA DE VEÍCULOS */}
+        {/* COLUNA ESQUERDA: LISTA DE VEÍCULOS */}
         <div>
           {carregando ? (
             <p style={{ color: 'rgba(255,255,255,0.4)' }}>Carregando veículos...</p>
@@ -625,8 +627,10 @@ function Veiculos() {
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                           <th style={{ padding: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.3)' }}>Data</th>
                           <th style={{ padding: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.3)' }}>Posto</th>
+                          <th style={{ padding: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.3)' }}>Combustível</th>
                           <th style={{ padding: '8px', textAlign: 'right', color: 'rgba(255,255,255,0.3)' }}>KM</th>
                           <th style={{ padding: '8px', textAlign: 'right', color: 'rgba(255,255,255,0.3)' }}>Litros</th>
+                          <th style={{ padding: '8px', textAlign: 'right', color: 'rgba(255,255,255,0.3)' }}>Preço/L</th>
                           <th style={{ padding: '8px', textAlign: 'right', color: 'rgba(255,255,255,0.3)' }}>KM/L</th>
                           <th style={{ padding: '8px', textAlign: 'right', color: 'rgba(255,255,255,0.3)' }}>Valor</th>
                           <th style={{ padding: '8px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>Ações</th>
@@ -637,8 +641,32 @@ function Veiculos() {
                           <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={{ padding: '8px' }}>{formatarData(item.data)}</td>
                             <td style={{ padding: '8px' }}>{item.posto || '-'}</td>
+                            <td style={{ 
+                              padding: '8px',
+                              textTransform: 'capitalize'
+                            }}>
+                              <span style={{
+                                backgroundColor: item.combustivel === 'gasolina' ? 'rgba(58,122,189,0.15)' :
+                                               item.combustivel === 'etanol' ? 'rgba(45,138,78,0.15)' :
+                                               item.combustivel === 'diesel' ? 'rgba(237,137,54,0.15)' :
+                                               'rgba(255,255,255,0.05)',
+                                color: item.combustivel === 'gasolina' ? '#3a7abd' :
+                                       item.combustivel === 'etanol' ? '#2d8a4e' :
+                                       item.combustivel === 'diesel' ? '#ed8936' :
+                                       'rgba(255,255,255,0.6)',
+                                padding: '2px 10px',
+                                borderRadius: '12px',
+                                fontSize: '11px',
+                                fontWeight: '500'
+                              }}>
+                                {item.combustivel}
+                              </span>
+                            </td>
                             <td style={{ padding: '8px', textAlign: 'right' }}>{item.kmInicial} → {item.kmFinal}</td>
                             <td style={{ padding: '8px', textAlign: 'right' }}>{item.litros}</td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#63b3ed' }}>
+                              {item.precoPorLitro ? `R$ ${item.precoPorLitro.toFixed(3)}` : '-'}
+                            </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#2d8a4e' }}>
                               {item.kmPorLitro?.toFixed(1) || '-'}
                             </td>
@@ -1126,9 +1154,27 @@ function Veiculos() {
                       backgroundColor: 'rgba(255,255,255,0.05)',
                       color: '#ffffff'
                     }}
+                    required
                   />
                 </div>
               </div>
+
+              {/* Preço por litro (cálculo automático) */}
+              {formAbastecimento.litros > 0 && formAbastecimento.valor > 0 && (
+                <div style={{
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  marginBottom: '12px',
+                  border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: 0 }}>
+                    💡 Preço por litro: <strong style={{ color: '#63b3ed' }}>
+                      R$ {(parseFloat(formAbastecimento.valor) / parseFloat(formAbastecimento.litros)).toFixed(3)}
+                    </strong>
+                  </p>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ marginBottom: '12px' }}>
@@ -1150,7 +1196,9 @@ function Veiculos() {
                   >
                     {tiposCombustivel.map(t => (
                       <option key={t} value={t} style={{ backgroundColor: '#1a2b4a', textTransform: 'capitalize' }}>
-                        {t}
+                        {t === 'gasolina' ? 'Gasolina Comum' : 
+                         t === 'etanol' ? 'Etanol' : 
+                         t === 'diesel' ? 'Diesel' : 'GNV'}
                       </option>
                     ))}
                   </select>
