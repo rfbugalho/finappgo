@@ -103,12 +103,13 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    const q = query(
+    let q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
       where('cartaoId', '==', cartaoId),
       orderBy('data', 'desc')
     )
+    
     const querySnapshot = await getDocs(q)
     const lista = []
     querySnapshot.forEach((doc) => {
@@ -125,6 +126,31 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     return lista
   } catch (error) {
     console.error('Erro ao buscar despesas do cartão:', error)
+    return []
+  }
+}
+
+export const buscarDespesasConsolidadas = async (ano) => {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Usuário não logado')
+
+    const q = query(
+      collection(db, DESPESAS_COLLECTION), 
+      where('userId', '==', user.uid)
+    )
+    const querySnapshot = await getDocs(q)
+    const lista = []
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      const dataObj = new Date(data.data)
+      if (dataObj.getFullYear() === ano) {
+        lista.push({ id: doc.id, ...data })
+      }
+    })
+    return lista
+  } catch (error) {
+    console.error('Erro ao buscar despesas consolidadas:', error)
     return []
   }
 }
