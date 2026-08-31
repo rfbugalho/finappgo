@@ -51,7 +51,7 @@ function Cartoes() {
   })
 
   // ==========================================
-  // MODAL DESPESA
+  // MODAL DESPESA (COM CAMPO DE OBSERVAÇÃO)
   // ==========================================
   const [modalDespesaAberto, setModalDespesaAberto] = useState(false)
   const [modalEdicaoDespesa, setModalEdicaoDespesa] = useState(false)
@@ -60,6 +60,7 @@ function Cartoes() {
     cartaoId: '',
     data: new Date().toISOString().split('T')[0],
     descricao: '',
+    observacao: '', // ⭐ NOVO CAMPO
     valor: '',
     parcelado: false,
     totalParcelas: 1,
@@ -264,7 +265,7 @@ function Cartoes() {
   }, [filtroMes, filtroAno])
 
   // ==========================================
-  // FUNÇÕES DE DESPESA
+  // FUNÇÕES DE DESPESA (COM OBSERVAÇÃO)
   // ==========================================
   const abrirModalNovaDespesa = (cartaoId) => {
     const hoje = new Date()
@@ -273,6 +274,7 @@ function Cartoes() {
       cartaoId: cartaoId,
       data: hoje.toISOString().split('T')[0],
       descricao: '',
+      observacao: '',
       valor: '',
       parcelado: false,
       totalParcelas: 1,
@@ -289,6 +291,7 @@ function Cartoes() {
       cartaoId: despesa.cartaoId,
       data: despesa.data,
       descricao: despesa.descricao,
+      observacao: despesa.observacao || '',
       valor: despesa.valor,
       parcelado: despesa.parcelado || false,
       totalParcelas: despesa.totalParcelas || 1,
@@ -317,6 +320,7 @@ function Cartoes() {
       cartaoId: formDespesa.cartaoId,
       data: formDespesa.data,
       descricao: formDespesa.descricao.trim(),
+      observacao: formDespesa.observacao || '',
       valor: valorNumero,
       parcelado: formDespesa.parcelado,
       totalParcelas: formDespesa.parcelado ? formDespesa.totalParcelas : 1,
@@ -827,6 +831,7 @@ function Cartoes() {
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Data</th>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Categoria</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Observação</th>
                       <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
                       <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
                       <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Ações</th>
@@ -847,6 +852,9 @@ function Cartoes() {
                           }}>
                             {despesa.categoria || '-'}
                           </span>
+                        </td>
+                        <td style={{ padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+                          {despesa.observacao || '-'}
                         </td>
                         <td style={{ padding: '10px', textAlign: 'right', color: '#fc8181' }}>
                           {formatarMoeda(despesa.valor)}
@@ -1101,7 +1109,7 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - DESPESA
+          MODAL - DESPESA (COM CAMPO DE OBSERVAÇÃO)
           ========================================== */}
       {modalDespesaAberto && (
         <div style={{
@@ -1175,6 +1183,28 @@ function Cartoes() {
                     color: '#ffffff'
                   }}
                   required
+                />
+              </div>
+
+              {/* ⭐ NOVO CAMPO: OBSERVAÇÃO */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  📝 Observação (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Compra do mês, Presente para João..."
+                  value={formDespesa.observacao}
+                  onChange={(e) => setFormDespesa({ ...formDespesa, observacao: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff'
+                  }}
                 />
               </div>
 

@@ -103,7 +103,7 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    let q = query(
+    const q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
       where('cartaoId', '==', cartaoId),
@@ -114,9 +114,13 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     const lista = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      
+      // Usar mesFatura e anoFatura se existirem, senão usar a data da compra
+      const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
+      const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
+      
       if (mes && ano) {
-        const dataObj = new Date(data.data)
-        if (dataObj.getMonth() + 1 === mes && dataObj.getFullYear() === ano) {
+        if (mesFatura === mes && anoFatura === ano) {
           lista.push({ id: doc.id, ...data })
         }
       } else {
@@ -169,6 +173,10 @@ export const adicionarDespesaCartao = async (despesa) => {
       valorParcela = despesa.valor / totalParcelas
     }
 
+    // Garantir que mesFatura e anoFatura estão definidos
+    const mesFatura = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
+    const anoFatura = despesa.anoFatura || new Date(despesa.data).getFullYear()
+
     const docRef = await addDoc(collection(db, DESPESAS_COLLECTION), {
       ...despesa,
       userId: user.uid,
@@ -176,8 +184,8 @@ export const adicionarDespesaCartao = async (despesa) => {
       totalParcelas: totalParcelas,
       parcelaAtual: parcelaAtual,
       parcelasRestantes: totalParcelas - parcelaAtual,
-      mesFatura: despesa.mesFatura || new Date(despesa.data).getMonth() + 1,
-      anoFatura: despesa.anoFatura || new Date(despesa.data).getFullYear(),
+      mesFatura: mesFatura,
+      anoFatura: anoFatura,
       status: 'pendente',
       criadoEm: new Date().toISOString()
     })
@@ -383,5 +391,6 @@ export const atualizarLimiteCartao = async (cartaoId) => {
 
   } catch (error) {
     console.error('Erro ao atualizar limite do cartão:', error)
+    throw error
   }
 }
