@@ -95,10 +95,9 @@ export const excluirCartao = async (id) => {
 }
 
 // ==========================================
-// DESPESAS DO CARTÃO
+// ⭐ DESPESAS DO CARTÃO - CORRIGIDO
 // ==========================================
 
-// ⭐ FUNÇÃO CORRIGIDA: FILTRA POR MESFATURA E ANOFATURA
 export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => {
   try {
     const user = auth.currentUser
@@ -108,8 +107,7 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     const q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
-      where('cartaoId', '==', cartaoId),
-      orderBy('data', 'desc')
+      where('cartaoId', '==', cartaoId)
     )
     
     const querySnapshot = await getDocs(q)
@@ -117,11 +115,11 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
-      // ⭐ IMPORTANTE: Usar mesFatura e anoFatura para filtrar (não a data da compra)
+      // ⭐ EXTRAIR O MÊS E ANO DA FATURA (priorizar mesFatura/anoFatura)
       const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       
-      // Se foi passado mês e ano, filtrar pela fatura
+      // Se foi passado mês e ano, filtrar pela FATURA (não pela data da compra)
       if (mes && ano) {
         if (mesFatura === mes && anoFatura === ano) {
           lista.push({ id: doc.id, ...data })
@@ -131,6 +129,10 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
         lista.push({ id: doc.id, ...data })
       }
     })
+    
+    // ⭐ ORDENAR POR DATA (MAIS RECENTE PRIMEIRO)
+    lista.sort((a, b) => new Date(b.data) - new Date(a.data))
+    
     return lista
   } catch (error) {
     console.error('Erro ao buscar despesas do cartão:', error)
@@ -138,6 +140,9 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
   }
 }
 
+// ==========================================
+// BUSCAR DESPESAS CONSOLIDADAS (USANDO ANOFATURA)
+// ==========================================
 export const buscarDespesasConsolidadas = async (ano) => {
   try {
     const user = auth.currentUser
@@ -151,7 +156,6 @@ export const buscarDespesasConsolidadas = async (ano) => {
     const lista = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
-      // ⭐ Filtrar pelo ano da fatura
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       if (anoFatura === ano) {
         lista.push({ id: doc.id, ...data })
@@ -164,6 +168,9 @@ export const buscarDespesasConsolidadas = async (ano) => {
   }
 }
 
+// ==========================================
+// ADICIONAR DESPESA
+// ==========================================
 export const adicionarDespesaCartao = async (despesa) => {
   try {
     const user = auth.currentUser
@@ -178,7 +185,6 @@ export const adicionarDespesaCartao = async (despesa) => {
       valorParcela = despesa.valor / totalParcelas
     }
 
-    // ⭐ Garantir que mesFatura e anoFatura estão definidos
     const mesFatura = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
     const anoFatura = despesa.anoFatura || new Date(despesa.data).getFullYear()
 
