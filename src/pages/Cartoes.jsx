@@ -13,13 +13,16 @@ import {
   buscarPagamentosCartao
 } from '../firebase/cartoesService'
 import { buscarContasAtivas } from '../firebase/contasService'
+import { buscarCategorias } from '../firebase/categoriasService'
 import { formatarMoeda, formatarData } from '../utils/formatters'
 
 function Cartoes() {
   const [cartoes, setCartoes] = useState([])
   const [contas, setContas] = useState([])
+  const [categorias, setCategorias] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [carregandoContas, setCarregandoContas] = useState(true)
+  const [carregandoCategorias, setCarregandoCategorias] = useState(true)
   
   // ==========================================
   // ESTADOS PARA FATURA DETALHADA
@@ -51,7 +54,7 @@ function Cartoes() {
   })
 
   // ==========================================
-  // MODAL DESPESA (COM CAMPO DE OBSERVAÇÃO)
+  // MODAL DESPESA (COM CATEGORIA E SUBCATEGORIA)
   // ==========================================
   const [modalDespesaAberto, setModalDespesaAberto] = useState(false)
   const [modalEdicaoDespesa, setModalEdicaoDespesa] = useState(false)
@@ -60,7 +63,9 @@ function Cartoes() {
     cartaoId: '',
     data: new Date().toISOString().split('T')[0],
     descricao: '',
-    observacao: '', // ⭐ NOVO CAMPO
+    observacao: '',
+    categoria: '',
+    subcategoria: '',
     valor: '',
     parcelado: false,
     totalParcelas: 1,
@@ -111,6 +116,13 @@ function Cartoes() {
     setCarregandoContas(false)
   }
 
+  const carregarCategorias = async () => {
+    setCarregandoCategorias(true)
+    const dados = await buscarCategorias()
+    setCategorias(dados)
+    setCarregandoCategorias(false)
+  }
+
   const carregarDadosConsolidados = async () => {
     const despesas = await buscarDespesasConsolidadas(anoSelecionado)
     
@@ -157,6 +169,7 @@ function Cartoes() {
   useEffect(() => {
     carregarCartoes()
     carregarContas()
+    carregarCategorias()
   }, [])
 
   useEffect(() => {
@@ -265,7 +278,7 @@ function Cartoes() {
   }, [filtroMes, filtroAno])
 
   // ==========================================
-  // FUNÇÕES DE DESPESA (COM OBSERVAÇÃO)
+  // FUNÇÕES DE DESPESA (COM CATEGORIA E SUBCATEGORIA)
   // ==========================================
   const abrirModalNovaDespesa = (cartaoId) => {
     const hoje = new Date()
@@ -275,6 +288,8 @@ function Cartoes() {
       data: hoje.toISOString().split('T')[0],
       descricao: '',
       observacao: '',
+      categoria: '',
+      subcategoria: '',
       valor: '',
       parcelado: false,
       totalParcelas: 1,
@@ -292,6 +307,8 @@ function Cartoes() {
       data: despesa.data,
       descricao: despesa.descricao,
       observacao: despesa.observacao || '',
+      categoria: despesa.categoria || '',
+      subcategoria: despesa.subcategoria || '',
       valor: despesa.valor,
       parcelado: despesa.parcelado || false,
       totalParcelas: despesa.totalParcelas || 1,
@@ -316,11 +333,18 @@ function Cartoes() {
       return
     }
 
+    if (!formDespesa.categoria) {
+      alert('Selecione uma categoria.')
+      return
+    }
+
     const dadosParaSalvar = {
       cartaoId: formDespesa.cartaoId,
       data: formDespesa.data,
       descricao: formDespesa.descricao.trim(),
       observacao: formDespesa.observacao || '',
+      categoria: formDespesa.categoria,
+      subcategoria: formDespesa.subcategoria || '',
       valor: valorNumero,
       parcelado: formDespesa.parcelado,
       totalParcelas: formDespesa.parcelado ? formDespesa.totalParcelas : 1,
@@ -447,6 +471,13 @@ function Cartoes() {
   }
 
   const totalFatura = despesas.reduce((acc, item) => acc + item.valor, 0)
+
+  // Filtrar categorias para despesas
+  const categoriasDespesa = categorias.filter(cat => cat.tipo === 'despesa')
+  
+  // Subcategorias da categoria selecionada
+  const categoriaSelecionada = categorias.find(cat => cat.nome === formDespesa.categoria)
+  const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
 
   // ==========================================
   // RENDER
@@ -831,6 +862,7 @@ function Cartoes() {
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Data</th>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Categoria</th>
+                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Subcategoria</th>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Observação</th>
                       <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
                       <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
@@ -851,6 +883,17 @@ function Cartoes() {
                             color: 'rgba(255,255,255,0.6)'
                           }}>
                             {despesa.categoria || '-'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{
+                            backgroundColor: 'rgba(255,255,255,0.03)',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            color: 'rgba(255,255,255,0.3)'
+                          }}>
+                            {despesa.subcategoria || '-'}
                           </span>
                         </td>
                         <td style={{ padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
@@ -1109,7 +1152,7 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - DESPESA (COM CAMPO DE OBSERVAÇÃO)
+          MODAL - DESPESA (COM CATEGORIA E SUBCATEGORIA)
           ========================================== */}
       {modalDespesaAberto && (
         <div style={{
@@ -1186,7 +1229,87 @@ function Cartoes() {
                 />
               </div>
 
-              {/* ⭐ NOVO CAMPO: OBSERVAÇÃO */}
+              {/* ⭐ CATEGORIA */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                  🏷️ Categoria
+                </label>
+                {carregandoCategorias ? (
+                  <p style={{ color: 'rgba(255,255,255,0.3)' }}>Carregando...</p>
+                ) : (
+                  <select
+                    value={formDespesa.categoria}
+                    onChange={(e) => {
+                      const categoriaNome = e.target.value
+                      setFormDespesa({ 
+                        ...formDespesa, 
+                        categoria: categoriaNome,
+                        subcategoria: '' 
+                      })
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      color: '#ffffff'
+                    }}
+                    required
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categoriasDespesa.map(cat => (
+                      <option key={cat.id} value={cat.nome} style={{ backgroundColor: '#1a2b4a' }}>
+                        {cat.nome}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {categoriasDespesa.length === 0 && !carregandoCategorias && (
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '4px' }}>
+                    Nenhuma categoria de despesa cadastrada.
+                    <br />
+                    <a href="/categorias" style={{ color: '#3a7abd' }}>Clique aqui para criar uma categoria</a>
+                  </p>
+                )}
+              </div>
+
+              {/* ⭐ SUBCATEGORIA */}
+              {formDespesa.categoria && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                    🔹 Subcategoria
+                  </label>
+                  {subcategoriasDisponiveis.length === 0 ? (
+                    <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', fontStyle: 'italic' }}>
+                      Nenhuma subcategoria cadastrada para esta categoria
+                    </p>
+                  ) : (
+                    <select
+                      value={formDespesa.subcategoria}
+                      onChange={(e) => setFormDespesa({ ...formDespesa, subcategoria: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        color: '#ffffff'
+                      }}
+                    >
+                      <option value="">Selecione uma subcategoria</option>
+                      {subcategoriasDisponiveis.map((sub, idx) => (
+                        <option key={idx} value={sub} style={{ backgroundColor: '#1a2b4a' }}>
+                          {sub}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   📝 Observação (opcional)
