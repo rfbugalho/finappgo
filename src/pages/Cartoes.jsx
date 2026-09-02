@@ -123,48 +123,48 @@ function Cartoes() {
     setCarregandoCategorias(false)
   }
 
-  const carregarDadosConsolidados = async () => {
-    const despesas = await buscarDespesasConsolidadas(anoSelecionado)
-    
-    const consolidado = {}
-    cartoes.forEach(cartao => {
-      consolidado[cartao.id] = {
-        id: cartao.id,
-        nome: cartao.nome,
-        bandeira: cartao.bandeira,
-        limiteTotal: cartao.limiteTotal || 0,
-        meses: {}
-      }
-      for (let i = 0; i < 12; i++) {
-        consolidado[cartao.id].meses[i + 1] = 0
-      }
-    })
-    
-    despesas.forEach(despesa => {
-      const data = new Date(despesa.data)
-      const mes = data.getMonth() + 1
-      const cartaoId = despesa.cartaoId
-      if (consolidado[cartaoId]) {
-        consolidado[cartaoId].meses[mes] = (consolidado[cartaoId].meses[mes] || 0) + despesa.valor
-      }
-    })
-    
-    const resultado = Object.keys(consolidado).map(key => {
-      const item = consolidado[key]
-      const total = Object.values(item.meses).reduce((acc, val) => acc + val, 0)
-      const totalGeral = Object.values(consolidado).reduce((acc, c) => {
-        return acc + Object.values(c.meses).reduce((s, v) => s + v, 0)
-      }, 0)
-      const percentual = totalGeral > 0 ? (total / totalGeral) * 100 : 0
-      return {
-        ...item,
-        total,
-        percentual
-      }
-    })
-    
-    setDadosConsolidados(resultado)
-  }
+const carregarDadosConsolidados = async () => {
+  const despesas = await buscarDespesasConsolidadas(anoSelecionado)
+  
+  const consolidado = {}
+  cartoes.forEach(cartao => {
+    consolidado[cartao.id] = {
+      id: cartao.id,
+      nome: cartao.nome,
+      bandeira: cartao.bandeira,
+      limiteTotal: cartao.limiteTotal || 0,
+      meses: {}
+    }
+    for (let i = 0; i < 12; i++) {
+      consolidado[cartao.id].meses[i + 1] = 0
+    }
+  })
+  
+  // ⭐ AGRUPAR POR MÊS DA FATURA (mesFatura)
+  despesas.forEach(despesa => {
+    const mes = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
+    const cartaoId = despesa.cartaoId
+    if (consolidado[cartaoId]) {
+      consolidado[cartaoId].meses[mes] = (consolidado[cartaoId].meses[mes] || 0) + despesa.valor
+    }
+  })
+  
+  const resultado = Object.keys(consolidado).map(key => {
+    const item = consolidado[key]
+    const total = Object.values(item.meses).reduce((acc, val) => acc + val, 0)
+    const totalGeral = Object.values(consolidado).reduce((acc, c) => {
+      return acc + Object.values(c.meses).reduce((s, v) => s + v, 0)
+    }, 0)
+    const percentual = totalGeral > 0 ? (total / totalGeral) * 100 : 0
+    return {
+      ...item,
+      total,
+      percentual
+    }
+  })
+  
+  setDadosConsolidados(resultado)
+}
 
   useEffect(() => {
     carregarCartoes()

@@ -95,7 +95,7 @@ export const excluirCartao = async (id) => {
 }
 
 // ==========================================
-// ⭐ DESPESAS DO CARTÃO - CORRIGIDO
+// DESPESAS DO CARTÃO
 // ==========================================
 
 export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => {
@@ -103,7 +103,6 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
-    // Buscar TODAS as despesas do cartão (sem filtro de data no Firestore)
     const q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
@@ -115,24 +114,20 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
-      // ⭐ EXTRAIR O MÊS E ANO DA FATURA (priorizar mesFatura/anoFatura)
+      // ⭐ USAR MESFATURA E ANOFATURA (NÃO A DATA DA COMPRA)
       const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       
-      // Se foi passado mês e ano, filtrar pela FATURA (não pela data da compra)
       if (mes && ano) {
         if (mesFatura === mes && anoFatura === ano) {
           lista.push({ id: doc.id, ...data })
         }
       } else {
-        // Se não foi passado mês/ano, retornar todas
         lista.push({ id: doc.id, ...data })
       }
     })
     
-    // ⭐ ORDENAR POR DATA (MAIS RECENTE PRIMEIRO)
     lista.sort((a, b) => new Date(b.data) - new Date(a.data))
-    
     return lista
   } catch (error) {
     console.error('Erro ao buscar despesas do cartão:', error)
@@ -141,7 +136,7 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
 }
 
 // ==========================================
-// BUSCAR DESPESAS CONSOLIDADAS (USANDO ANOFATURA)
+// ⭐ BUSCAR DESPESAS CONSOLIDADAS - CORRIGIDO
 // ==========================================
 export const buscarDespesasConsolidadas = async (ano) => {
   try {
@@ -156,9 +151,19 @@ export const buscarDespesasConsolidadas = async (ano) => {
     const lista = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      
+      // ⭐ USAR ANOFATURA PARA FILTRAR POR ANO
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
+      
       if (anoFatura === ano) {
-        lista.push({ id: doc.id, ...data })
+        // ⭐ ADICIONAR O MÊS DA FATURA PARA AGRUPAMENTO
+        const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
+        lista.push({ 
+          id: doc.id, 
+          ...data,
+          mesFatura: mesFatura,
+          anoFatura: anoFatura
+        })
       }
     })
     return lista
@@ -168,9 +173,6 @@ export const buscarDespesasConsolidadas = async (ano) => {
   }
 }
 
-// ==========================================
-// ADICIONAR DESPESA
-// ==========================================
 export const adicionarDespesaCartao = async (despesa) => {
   try {
     const user = auth.currentUser
