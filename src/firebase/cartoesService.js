@@ -115,6 +115,7 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
+      // ⭐ USAR MESFATURA E ANOFATURA PARA FILTRAR
       const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       
@@ -133,6 +134,9 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
   }
 }
 
+// ==========================================
+// ⭐ BUSCAR DESPESAS CONSOLIDADAS POR ANO (USANDO MESFATURA)
+// ==========================================
 export const buscarDespesasConsolidadas = async (ano) => {
   try {
     const user = auth.currentUser
@@ -146,8 +150,9 @@ export const buscarDespesasConsolidadas = async (ano) => {
     const lista = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
-      const dataObj = new Date(data.data)
-      if (dataObj.getFullYear() === ano) {
+      // ⭐ USAR ANOFATURA PARA FILTRAR POR ANO
+      const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
+      if (anoFatura === ano) {
         lista.push({ id: doc.id, ...data })
       }
     })
@@ -172,6 +177,7 @@ export const adicionarDespesaCartao = async (despesa) => {
       valorParcela = despesa.valor / totalParcelas
     }
 
+    // ⭐ GARANTIR QUE MESFATURA E ANOFATURA ESTÃO DEFINIDOS
     const mesFatura = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
     const anoFatura = despesa.anoFatura || new Date(despesa.data).getFullYear()
 
