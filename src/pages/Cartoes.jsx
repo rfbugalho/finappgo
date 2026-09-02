@@ -54,7 +54,7 @@ function Cartoes() {
   })
 
   // ==========================================
-  // MODAL DESPESA (COM CATEGORIA E SUBCATEGORIA)
+  // MODAL DESPESA
   // ==========================================
   const [modalDespesaAberto, setModalDespesaAberto] = useState(false)
   const [modalEdicaoDespesa, setModalEdicaoDespesa] = useState(false)
@@ -278,7 +278,7 @@ function Cartoes() {
   }, [filtroMes, filtroAno])
 
   // ==========================================
-  // FUNÇÕES DE DESPESA (COM CATEGORIA E SUBCATEGORIA)
+  // FUNÇÕES DE DESPESA
   // ==========================================
   const abrirModalNovaDespesa = (cartaoId) => {
     const hoje = new Date()
@@ -472,10 +472,7 @@ function Cartoes() {
 
   const totalFatura = despesas.reduce((acc, item) => acc + item.valor, 0)
 
-  // Filtrar categorias para despesas
   const categoriasDespesa = categorias.filter(cat => cat.tipo === 'despesa')
-  
-  // Subcategorias da categoria selecionada
   const categoriaSelecionada = categorias.find(cat => cat.nome === formDespesa.categoria)
   const subcategoriasDisponiveis = categoriaSelecionada?.subcategorias || []
 
@@ -543,7 +540,7 @@ function Cartoes() {
       </div>
 
       {/* ==========================================
-          GRID CONSOLIDADO
+          GRID CONSOLIDADO - LARGURAS AJUSTADAS
           ========================================== */}
       <div style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -579,30 +576,33 @@ function Cartoes() {
               borderCollapse: 'collapse', 
               color: '#fff', 
               fontSize: '13px',
-              minWidth: '800px'
+              minWidth: '1200px',
+              tableLayout: 'fixed'
             }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '140px' }}>
                     Cartão / Limite
                   </th>
                   {meses.map((mes, idx) => (
                     <th key={idx} style={{ 
-                      padding: '8px 12px', 
+                      padding: '8px 4px', 
                       textAlign: 'right', 
                       color: 'rgba(255,255,255,0.4)',
-                      fontSize: '11px'
+                      fontSize: '10px',
+                      width: '55px',
+                      whiteSpace: 'nowrap'
                     }}>
                       {mes.substring(0, 3)}
                     </th>
                   ))}
-                  <th style={{ padding: '8px 12px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', color: 'rgba(255,255,255,0.4)', width: '90px' }}>
                     Total
                   </th>
-                  <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', width: '60px' }}>
                     % Rec
                   </th>
-                  <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', width: '140px' }}>
                     Ações
                   </th>
                 </tr>
@@ -616,26 +616,27 @@ function Cartoes() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <td style={{ padding: '8px 12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{getBandeiraEmoji(item.bandeira)}</span>
-                        <span>{item.nome}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>
+                        <span style={{ fontWeight: '500' }}>{item.nome}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px' }}>
                           {formatarMoeda(item.limiteTotal)}
                         </span>
                       </div>
                     </td>
                     {Object.values(item.meses).map((valor, idx) => (
                       <td key={idx} style={{ 
-                        padding: '8px 12px', 
+                        padding: '8px 4px', 
                         textAlign: 'right',
                         color: valor > 0 ? '#fff' : 'rgba(255,255,255,0.15)',
-                        fontSize: '12px'
+                        fontSize: '11px',
+                        whiteSpace: 'nowrap'
                       }}>
                         {valor > 0 ? formatarMoeda(valor) : '-'}
                       </td>
                     ))}
-                    <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '600', color: '#fff' }}>
+                    <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
                       {formatarMoeda(item.total)}
                     </td>
                     <td style={{ 
@@ -643,11 +644,12 @@ function Cartoes() {
                       textAlign: 'center',
                       color: item.percentual > 10 ? '#fc8181' : '#63b3ed',
                       fontWeight: '500',
-                      fontSize: '12px'
+                      fontSize: '11px',
+                      whiteSpace: 'nowrap'
                     }}>
-                      {item.percentual > 0 ? item.percentual.toFixed(2) + '%' : '-'}
+                      {item.percentual > 0 ? item.percentual.toFixed(1) + '%' : '-'}
                     </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                         <button
                           onClick={() => verFatura(item.id)}
@@ -658,7 +660,8 @@ function Cartoes() {
                             padding: '4px 10px',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            fontSize: '11px'
+                            fontSize: '11px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           📋 Fatura
@@ -672,7 +675,8 @@ function Cartoes() {
                             padding: '4px 10px',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            fontSize: '11px'
+                            fontSize: '11px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           ➕
@@ -686,7 +690,8 @@ function Cartoes() {
                             padding: '4px 8px',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            fontSize: '11px'
+                            fontSize: '11px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           ✏️
@@ -696,23 +701,25 @@ function Cartoes() {
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid rgba(255,255,255,0.08)' }}>
-                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#fff' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
                     Total Geral
                   </td>
                   {Array.from({ length: 12 }, (_, idx) => {
                     const totalMes = dadosConsolidados.reduce((acc, item) => acc + (item.meses[idx + 1] || 0), 0)
                     return (
                       <td key={idx} style={{ 
-                        padding: '8px 12px', 
+                        padding: '8px 4px', 
                         textAlign: 'right', 
                         fontWeight: '600',
-                        color: totalMes > 0 ? '#fff' : 'rgba(255,255,255,0.15)'
+                        color: totalMes > 0 ? '#fff' : 'rgba(255,255,255,0.15)',
+                        fontSize: '11px',
+                        whiteSpace: 'nowrap'
                       }}>
                         {totalMes > 0 ? formatarMoeda(totalMes) : '-'}
                       </td>
                     )
                   })}
-                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '600', color: '#fff' }}>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
                     {formatarMoeda(dadosConsolidados.reduce((acc, item) => acc + item.total, 0))}
                   </td>
                   <td style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>-</td>
@@ -856,60 +863,70 @@ function Cartoes() {
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '13px' }}>
+                <table style={{ 
+                  width: '100%', 
+                  borderCollapse: 'collapse', 
+                  color: '#ffffff', 
+                  fontSize: '13px',
+                  minWidth: '900px',
+                  tableLayout: 'fixed'
+                }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Data</th>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Descrição</th>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Categoria</th>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Subcategoria</th>
-                      <th style={{ padding: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)' }}>Observação</th>
-                      <th style={{ padding: '10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)' }}>Valor</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Parcelas</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Ações</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '90px' }}>Data</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '150px' }}>Descrição</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '100px' }}>Categoria</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '100px' }}>Subcategoria</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', width: '120px' }}>Observação</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right', color: 'rgba(255,255,255,0.4)', width: '90px' }}>Valor</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', width: '80px' }}>Parcelas</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', width: '90px' }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {despesas.map(despesa => (
                       <tr key={despesa.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '10px' }}>{formatarData(despesa.data)}</td>
-                        <td style={{ padding: '10px' }}>{despesa.descricao}</td>
-                        <td style={{ padding: '10px' }}>
+                        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{formatarData(despesa.data)}</td>
+                        <td style={{ padding: '8px 10px', wordBreak: 'break-word' }}>{despesa.descricao}</td>
+                        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                           <span style={{
                             backgroundColor: 'rgba(255,255,255,0.05)',
                             padding: '2px 10px',
                             borderRadius: '12px',
                             fontSize: '11px',
-                            color: 'rgba(255,255,255,0.6)'
+                            color: 'rgba(255,255,255,0.6)',
+                            whiteSpace: 'nowrap'
                           }}>
                             {despesa.categoria || '-'}
                           </span>
                         </td>
-                        <td style={{ padding: '10px' }}>
+                        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                           <span style={{
                             backgroundColor: 'rgba(255,255,255,0.03)',
                             padding: '2px 10px',
                             borderRadius: '12px',
                             fontSize: '11px',
-                            color: 'rgba(255,255,255,0.3)'
+                            color: 'rgba(255,255,255,0.3)',
+                            whiteSpace: 'nowrap'
                           }}>
                             {despesa.subcategoria || '-'}
                           </span>
                         </td>
-                        <td style={{ padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+                        <td style={{ padding: '8px 10px', color: 'rgba(255,255,255,0.4)', fontSize: '12px', wordBreak: 'break-word' }}>
                           {despesa.observacao || '-'}
                         </td>
-                        <td style={{ padding: '10px', textAlign: 'right', color: '#fc8181' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', color: '#fc8181', whiteSpace: 'nowrap' }}>
                           {formatarMoeda(despesa.valor)}
                         </td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {despesa.parcelado ? (
                             <span style={{
                               backgroundColor: 'rgba(58,122,189,0.2)',
                               color: '#3a7abd',
                               padding: '2px 10px',
                               borderRadius: '12px',
-                              fontSize: '11px'
+                              fontSize: '11px',
+                              whiteSpace: 'nowrap'
                             }}>
                               {despesa.parcelaAtual || 1}/{despesa.totalParcelas}
                             </span>
@@ -917,17 +934,17 @@ function Cartoes() {
                             <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>À vista</span>
                           )}
                         </td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                           <button
                             onClick={() => abrirModalEditarDespesa(despesa)}
                             style={{
                               backgroundColor: 'rgba(255,255,255,0.05)',
                               color: 'rgba(255,255,255,0.6)',
                               border: 'none',
-                              padding: '4px 10px',
+                              padding: '4px 8px',
                               borderRadius: '4px',
                               cursor: 'pointer',
-                              fontSize: '12px',
+                              fontSize: '11px',
                               marginRight: '4px'
                             }}
                           >
@@ -939,10 +956,10 @@ function Cartoes() {
                               backgroundColor: 'rgba(217,74,74,0.2)',
                               color: '#d94a4a',
                               border: 'none',
-                              padding: '4px 10px',
+                              padding: '4px 8px',
                               borderRadius: '4px',
                               cursor: 'pointer',
-                              fontSize: '12px'
+                              fontSize: '11px'
                             }}
                           >
                             🗑️
@@ -1152,7 +1169,7 @@ function Cartoes() {
       )}
 
       {/* ==========================================
-          MODAL - DESPESA (COM CATEGORIA E SUBCATEGORIA)
+          MODAL - DESPESA
           ========================================== */}
       {modalDespesaAberto && (
         <div style={{
@@ -1229,7 +1246,7 @@ function Cartoes() {
                 />
               </div>
 
-              {/* ⭐ CATEGORIA */}
+              {/* Categoria */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                   🏷️ Categoria
@@ -1275,7 +1292,7 @@ function Cartoes() {
                 )}
               </div>
 
-              {/* ⭐ SUBCATEGORIA */}
+              {/* Subcategoria */}
               {formDespesa.categoria && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>

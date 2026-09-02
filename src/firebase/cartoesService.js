@@ -355,7 +355,6 @@ export const atualizarLimiteCartao = async (cartaoId) => {
 
     const cartao = cartaoDoc.data()
     
-    // Buscar todas as despesas do cartão
     const q = query(
       collection(db, DESPESAS_COLLECTION),
       where('userId', '==', user.uid),
@@ -377,7 +376,6 @@ export const atualizarLimiteCartao = async (cartaoId) => {
       }
     })
 
-    // Buscar pagamentos realizados
     const qPagamentos = query(
       collection(db, PAGAMENTOS_COLLECTION),
       where('userId', '==', user.uid),
