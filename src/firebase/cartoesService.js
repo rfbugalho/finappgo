@@ -98,11 +98,13 @@ export const excluirCartao = async (id) => {
 // DESPESAS DO CARTÃO
 // ==========================================
 
+// ⭐ FUNÇÃO CORRIGIDA: FILTRA POR MESFATURA E ANOFATURA
 export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não logado')
 
+    // Buscar TODAS as despesas do cartão (sem filtro de data no Firestore)
     const q = query(
       collection(db, DESPESAS_COLLECTION), 
       where('userId', '==', user.uid),
@@ -115,15 +117,17 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
-      // ⭐ USAR MESFATURA E ANOFATURA PARA FILTRAR
+      // ⭐ IMPORTANTE: Usar mesFatura e anoFatura para filtrar (não a data da compra)
       const mesFatura = data.mesFatura || new Date(data.data).getMonth() + 1
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       
+      // Se foi passado mês e ano, filtrar pela fatura
       if (mes && ano) {
         if (mesFatura === mes && anoFatura === ano) {
           lista.push({ id: doc.id, ...data })
         }
       } else {
+        // Se não foi passado mês/ano, retornar todas
         lista.push({ id: doc.id, ...data })
       }
     })
@@ -134,9 +138,6 @@ export const buscarDespesasCartao = async (cartaoId, mes = null, ano = null) => 
   }
 }
 
-// ==========================================
-// ⭐ BUSCAR DESPESAS CONSOLIDADAS POR ANO (USANDO MESFATURA)
-// ==========================================
 export const buscarDespesasConsolidadas = async (ano) => {
   try {
     const user = auth.currentUser
@@ -150,7 +151,7 @@ export const buscarDespesasConsolidadas = async (ano) => {
     const lista = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
-      // ⭐ USAR ANOFATURA PARA FILTRAR POR ANO
+      // ⭐ Filtrar pelo ano da fatura
       const anoFatura = data.anoFatura || new Date(data.data).getFullYear()
       if (anoFatura === ano) {
         lista.push({ id: doc.id, ...data })
@@ -177,7 +178,7 @@ export const adicionarDespesaCartao = async (despesa) => {
       valorParcela = despesa.valor / totalParcelas
     }
 
-    // ⭐ GARANTIR QUE MESFATURA E ANOFATURA ESTÃO DEFINIDOS
+    // ⭐ Garantir que mesFatura e anoFatura estão definidos
     const mesFatura = despesa.mesFatura || new Date(despesa.data).getMonth() + 1
     const anoFatura = despesa.anoFatura || new Date(despesa.data).getFullYear()
 
